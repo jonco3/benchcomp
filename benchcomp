@@ -17,6 +17,7 @@ sys.path.insert(0, LibDir)
 
 from build import Build
 from format import *
+from perf import *
 from stats import *
 from test import *
 import display
@@ -37,6 +38,7 @@ def parseArgs():
     parser.add_argument('--show-samples', action='store_true')
     parser.add_argument('--gc-profile', action='store_true')
     parser.add_argument('--sys-usage', action='store_true')
+    parser.add_argument('--perf', action='store_true')
     parser.add_argument('builds', nargs="+")
     return parser.parse_args()
 
@@ -127,6 +129,8 @@ def runBenchmark(build, test, args):
 
     if args.sys_usage:
         cmd = ['/usr/bin/time', '-v'] + cmd
+    elif args.perf:
+        cmd = updateCommandForPerf(args, cmd)
 
     subprocess.call('sync')
     subprocess.call(['sleep', '1'])
@@ -164,6 +168,9 @@ def parseOutput(stdout, stderr, args, profilePath):
 
     if args.sys_usage:
         parseSysUsage(result, stderr)
+
+    if args.perf:
+        parsePerfOutput(result, stderr)
 
     if not result:
         print(stdout + stderr)
