@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+
+# Run benchmarks and compare the results interactively.
+
+import argparse
+import math
+import os
+import os.path
+import re
+import signal
+import subprocess
+import sys
+import tempfile
+
+LibDir = os.path.join(os.path.dirname(__file__), 'lib')
+sys.path.insert(0, LibDir)
+
+from build import Build
+from format import *
+from stats import *
+from test import *
+import display
+import gcprofile
+
+def main():
+    args = parseArgs()
+    builds = buildsToTest(args)
+    tests = testsToRun(args)
+    runTests(args, builds, tests)
+
+def parseArgs():
+    parser = argparse.ArgumentParser(
+        description = 'Run benchmarks and compare the results interactively')
+    parser.add_argument('-t', '--test', help='Test suite to run')
+    parser.add_argument('--iterations', type=int, default=50,
+                        help='The number of times to run each test')
+    parser.add_argument('--show-samples', action='store_true')
+    parser.add_argument('--gc-profile', action='store_true')
+    parser.add_argument('--sys-usage', action='store_true')
+    parser.add_argument('builds', nargs="+")
+    return parser.parse_args()
+
+def buildsToTest(args):
+    return list(map(Build, args.builds))
+
+def testsToRun(args):
+    allTests = getKnownTests()
+
+    if not args.test:
+        return [allTests[0]]
+
+    tests = list(filter(lambda t: t.name == args.test, allTests))
+    if tests:
+        return tests
+
+    return [LocalTest(args.test)]
+
+def getKnownTests():
+    return [
+        # Run all tests sequentially in a single runtime.
+        OctaneTest('octane', 'run.js'),
+
+        # Run individual tests independently.
+        OctaneTest('richards'),
+        OctaneTest('deltablue'),
+        OctaneTest('crypto'),
+        OctaneTest('raytrace'),
+        OctaneTest('earley-boyer'),
+        OctaneTest('regexp'),
+        OctaneTest('splay'),
+        OctaneTest('navier-stokes'),
+        OctaneTest('pdfjs'),
+        OctaneTest('mandreel'),
+        OctaneTest('gbemu'),
+        OctaneTest('code-load'),
+        OctaneTest('box2d'),
+        OctaneTest('zlib'),
+        OctaneTest('typescript')
+    ]
+
+def runTests(args, builds, tests):
+    # Nested map of lists keyed by result key then by build.
+    results = dict()
+
+    out = display.Terminal()
+
+    printHeader()
+    displayResults(out, builds, results, args.show_samples)
+
+    for i in range(args.iterations):
+        for build in builds:
+            for test in tests:
+                bmResults = runBenchmark(build, test, args)
+                for key in bmResults.keys():
+                    addResult(builds, results, build, key, bmResults[key])
+                with DelayedKeyboardInterrupt():
+                    displayResults(out, builds, results, args)
+
+class DelayedKeyboardInterrupt(object):
+    # From https://stackoverflow.com/a/21919644
+    def __enter__(self):
+        self.signal_received = False
+        self.old_handler = signal.signal(signal.SIGINT, self.handler)
+
+    def handler(self, sig, frame):
+        self.signal_received = (sig, frame)
+
+    def __exit__(self, type, value, traceback):
+        signal.signal(signal.SIGINT, self.old_handler)
+        if self.signal_received:
+            self.old_handler(*self.signal_received)
+
+def runBenchmark(build, test, args):
+    oldcwd = os.getcwd()
+    os.chdir(test.dir)
+    cmd = [build.shell] + build.args + [test.script] + test.args
+    env = dict()
+
+    profilePath = None
+    if args.gc_profile:
+        temp = tempfile.NamedTemporaryFile(delete=False)
+        temp.close()
+        profilePath = temp.name
+        env['JS_GC_PROFILE'] = '1'  # Ignore trivial slices for now
+        env['JS_GC_PROFILE_NURSERY'] = '0'
+        env['JS_GC_PROFILE_FILE'] = profilePath
+
+    if args.sys_usage:
+        cmd = ['/usr/bin/time', '-v'] + cmd
+
+    subprocess.call('sync')
+    subprocess.call(['sleep', '1'])
+
+    proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    if proc.returncode != 0:
+        print(f"Error running benchmark {test.name} with shell {build.shell}:")
+        print(' '.join(cmd))
+        print(proc.stderr)
+        sys.exit(1)
+    os.chdir(oldcwd)
+
+    return parseOutput(proc.stdout, proc.stderr, args, profilePath)
+
+def addResult(builds, results, build, key, result):
+    if key not in results:
+        results[key] = dict()
+        for b in builds:
+            results[key][b] = []
+
+    results[key][build].append(result)
+
+def parseOutput(stdout, stderr, args, profilePath):
+    result = dict()
+    for line in stdout.splitlines():
+        match = re.match(r'(\w+):\s(\d+(:?\.\d+)?)', line)
+        if match:
+            key, value = match.group(1), match.group(2)
+            result['!' + key] = float(value)
+
+    if profilePath:
+        with open(profilePath) as f:
+            gcprofile.summariseProfile(f.read(), result, False)
+        os.remove(profilePath)
+
+    if args.sys_usage:
+        parseSysUsage(result, stderr)
+
+    if not result:
+        print(stdout + stderr)
+        sys.exit("Can't parse output")
+
+    return result
+
+def parseSysUsage(result, text):
+    for line in text.splitlines():
+        match = re.match(r'\s+([^:]+):\s([\d\.]+)', line)
+        if not match:
+            continue
+
+        key, value = match.group(1), match.group(2)
+        if '(kbytes)' in key:
+            value = int(value)
+        else:
+            continue
+
+        result[key] = value
+
+def printHeader():
+    header = (24 * " ") + statsHeader()
+    print(header)
+    print(len(header) * "=")
+
+def displayResults(out, builds, results, args):
+    out.clear()
+
+    count = 0
+    geomean = dict()
+    for build in builds:
+        geomean[build] = 0
+
+    for key in results.keys():
+        statsForBuild = dict()
+        compareTo = None
+        low = None
+        high = None
+        first = True
+        for build in builds:
+            data = results[key][build]
+            if data:
+                stats = Stats(data)
+                statsForBuild[build] = stats
+                if key.startswith('!') and stats.mean != 0:
+                    geomean[build] += math.log(stats.mean)
+                if first:
+                    compareTo = stats
+                    low, high = stats.min, stats.max
+                    first = False
+                else:
+                    low, high = min(low, stats.min), max(high, stats.max)
+
+        if low == 0 and high == 0:
+            continue
+
+        if key.startswith('!'):
+            key = key[1:]
+            count += 1
+
+        out.print(f"{key}:")
+        for build in builds:
+            text = ""
+            samples = ""
+            if build in statsForBuild:
+                stats = statsForBuild[build]
+                comp = compareStats(stats, compareTo)
+                text = formatStats(stats, comp)
+
+                if low != high and stats.count > 1:
+                    text += "   " + formatBox(low, high, stats)
+                    if args.show_samples:
+                        samples = formatSamples(low, high, stats)
+
+            out.print("  %20s  %s" % (build.spec[-20:], text))
+            if args.show_samples:
+                out.print((76 * ' ') + samples)
+
+    if count > 1 and not args.gc_profile:
+        out.print()
+        out.print("Geometric mean:")
+        compareTo = None
+        first = True
+        for build in builds:
+            if geomean[build] != 0:
+                mean = math.exp(geomean[build] / count)
+                text = "          %8s" % formatFloat(8, mean)
+                if first:
+                    compareTo = mean
+                    first = False
+                else:
+                    diff = (mean - compareTo) / compareTo
+                    text += "                                     %4.1f%%" % (diff * 100)
+                out.print("  %20s  %s" % (build.spec[-20:], text))
+
+try:
+    main()
+except KeyboardInterrupt:
+    pass
