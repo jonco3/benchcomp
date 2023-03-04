@@ -4,6 +4,7 @@
 
 import math
 from scipy import stats
+import warnings
 
 class Stats:
     def __init__(self, results):
@@ -56,9 +57,10 @@ def compareStats(a, b):
     else:
         factor = diff / b.mean
 
+    p = None
     if a.count > 1 and b.count > 1 and a.mean != b.mean:
-        p = stats.ttest_ind(a.samples, b.samples, equal_var=False, trim=0.2).pvalue
-    else:
-        p = None
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            p = stats.ttest_ind(a.samples, b.samples, equal_var=False, trim=0.2).pvalue
 
     return Comparison(diff, factor, p)
