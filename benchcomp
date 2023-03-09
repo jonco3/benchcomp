@@ -39,6 +39,7 @@ def parseArgs():
     parser.add_argument('--gc-profile', action='store_true')
     parser.add_argument('--sys-usage', action='store_true')
     parser.add_argument('--perf', action='store_true')
+    parser.add_argument('--geomean', action='store_true')
     parser.add_argument('builds', nargs="+")
     return parser.parse_args()
 
@@ -206,10 +207,11 @@ def printHeader():
 def displayResults(out, builds, results, args):
     out.clear()
 
-    count = 0
-    geomean = dict()
-    for build in builds:
-        geomean[build] = 0
+    if args.geomean:
+        count = 0
+        geomean = dict()
+        for build in builds:
+            geomean[build] = 0
 
     for key in results.keys():
         statsForBuild = dict()
@@ -224,7 +226,7 @@ def displayResults(out, builds, results, args):
 
             stats = Stats(data)
             statsForBuild[build] = stats
-            if key.startswith('!') and stats.mean != 0:
+            if args.geomean and key.startswith('!') and stats.mean != 0:
                 geomean[build] += math.log(stats.mean)
             if first:
                 compareTo = stats
@@ -238,7 +240,8 @@ def displayResults(out, builds, results, args):
 
         if key.startswith('!'):
             key = key[1:]
-            count += 1
+            if args.geomean:
+                count += 1
 
         out.print(f"{key}:")
         for build in statsForBuild.keys():
@@ -256,7 +259,7 @@ def displayResults(out, builds, results, args):
             if args.show_samples:
                 out.print((76 * ' ') + samples)
 
-    if count > 1 and not args.gc_profile:
+    if args.geomean and count > 1 and not args.gc_profile:
         out.print()
         out.print("Geometric mean:")
         compareTo = None
