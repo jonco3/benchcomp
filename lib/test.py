@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import os.path
+
 class Test:
     def __init__(self, name, dir, script, args = []):
         self.name = name

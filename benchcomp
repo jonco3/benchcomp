@@ -84,10 +84,11 @@ def runTests(args, builds, tests):
     # Nested map of lists keyed by result key then by build.
     results = dict()
 
-    out = display.Terminal()
-
     printHeader()
-    displayResults(out, builds, results, args.show_samples)
+
+    out = None
+    if sys.stdout.isatty():
+        out = display.Terminal()
 
     for i in range(args.iterations):
         for build in builds:
@@ -95,8 +96,13 @@ def runTests(args, builds, tests):
                 bmResults = runBenchmark(build, test, args)
                 for key in bmResults.keys():
                     addResult(builds, results, build, key, bmResults[key])
-                with DelayedKeyboardInterrupt():
-                    displayResults(out, builds, results, args)
+                if out:
+                    with DelayedKeyboardInterrupt():
+                        displayResults(out, builds, results, args)
+
+    if not sys.stdout.isatty():
+        out = display.File(sys.stdout)
+        displayResults(out, builds, results, args)
 
 class DelayedKeyboardInterrupt(object):
     # From https://stackoverflow.com/a/21919644
