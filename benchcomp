@@ -219,19 +219,21 @@ def displayResults(out, builds, results, args):
         first = True
         for build in builds:
             data = results[key][build]
-            if data:
-                stats = Stats(data)
-                statsForBuild[build] = stats
-                if key.startswith('!') and stats.mean != 0:
-                    geomean[build] += math.log(stats.mean)
-                if first:
-                    compareTo = stats
-                    low, high = stats.min, stats.max
-                    first = False
-                else:
-                    low, high = min(low, stats.min), max(high, stats.max)
+            if not data:
+                continue
 
-        if low == 0 and high == 0:
+            stats = Stats(data)
+            statsForBuild[build] = stats
+            if key.startswith('!') and stats.mean != 0:
+                geomean[build] += math.log(stats.mean)
+            if first:
+                compareTo = stats
+                low, high = stats.min, stats.max
+                first = False
+            else:
+                low, high = min(low, stats.min), max(high, stats.max)
+
+        if not statsForBuild:
             continue
 
         if key.startswith('!'):
@@ -239,18 +241,16 @@ def displayResults(out, builds, results, args):
             count += 1
 
         out.print(f"{key}:")
-        for build in builds:
-            text = ""
-            samples = ""
-            if build in statsForBuild:
-                stats = statsForBuild[build]
-                comp = compareStats(stats, compareTo)
-                text = formatStats(stats, comp)
+        for build in statsForBuild.keys():
+            stats = statsForBuild[build]
+            comp = compareStats(stats, compareTo)
+            text = formatStats(stats, comp)
 
-                if low != high and stats.count > 1:
-                    text += "   " + formatBox(low, high, stats)
-                    if args.show_samples:
-                        samples = formatSamples(low, high, stats)
+            samples = ""
+            if low != high and stats.count > 1 and len(statsForBuild) > 1:
+                text += "   " + formatBox(low, high, stats)
+                if args.show_samples:
+                    samples = formatSamples(low, high, stats)
 
             out.print("  %20s  %s" % (build.spec[-20:], text))
             if args.show_samples:
