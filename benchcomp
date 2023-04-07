@@ -33,7 +33,7 @@ def main():
 def parseArgs():
     parser = argparse.ArgumentParser(
         description = 'Run benchmarks and compare the results interactively')
-    parser.add_argument('--args', help='Arguments passed to every build')
+    parser.add_argument('--args', default='', help='Arguments passed to every build')
     parser.add_argument('-t', '--test', help='Test suite to run')
     parser.add_argument('--iterations', type=int, default=200,
                         help='The number of times to run each test')
