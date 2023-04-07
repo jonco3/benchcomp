@@ -85,7 +85,7 @@ def runTests(args, builds, tests):
     # Nested map of lists keyed by result key then by build.
     results = dict()
 
-    printHeader()
+    headerWidth = printHeader()
 
     out = None
     if sys.stdout.isatty():
@@ -99,11 +99,11 @@ def runTests(args, builds, tests):
                     addResult(builds, results, build, key, bmResults[key])
                 if out:
                     with DelayedKeyboardInterrupt():
-                        displayResults(out, builds, results, args)
+                        displayResults(out, builds, results, args, headerWidth)
 
     if not sys.stdout.isatty():
         out = display.File(sys.stdout)
-        displayResults(out, builds, results, args)
+        displayResults(out, builds, results, args, headerWidth)
 
 class DelayedKeyboardInterrupt(object):
     # From https://stackoverflow.com/a/21919644
@@ -201,10 +201,12 @@ def parseSysUsage(result, text):
 
 def printHeader():
     header = (24 * " ") + statsHeader()
+    width = len(header)
     print(header)
-    print(len(header) * "=")
+    print(width * "=")
+    return width
 
-def displayResults(out, builds, results, args):
+def displayResults(out, builds, results, args, headerWidth):
     out.clear()
 
     if args.geomean:
@@ -251,13 +253,13 @@ def displayResults(out, builds, results, args):
 
             samples = ""
             if low != high and stats.count > 1 and len(statsForBuild) > 1:
-                text += "   " + formatBox(low, high, stats)
+                text += "  " + formatBox(low, high, stats)
                 if args.show_samples:
                     samples = formatSamples(low, high, stats)
 
             out.print("  %20s  %s" % (build.spec[-20:], text))
-            if args.show_samples:
-                out.print((76 * ' ') + samples)
+            if samples:
+                out.print(((headerWidth + 2) * ' ') + samples)
 
     if args.geomean and count > 1 and not args.gc_profile:
         out.print()
