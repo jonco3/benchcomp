@@ -259,7 +259,7 @@ def displayResults(out, builds, results, args, headerWidth):
 
             out.print("  %20s  %s" % (build.spec[-20:], text))
             if samples:
-                out.print(((headerWidth + 2) * ' ') + samples)
+                out.print("%*s  %s" % (headerWidth, '', samples))
 
     if args.geomean and count > 1 and not args.gc_profile:
         out.print()

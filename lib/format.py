@@ -2,6 +2,8 @@
 
 # Format benchmark data for display.
 
+import math
+
 def statsHeader():
     return "%-8s  %-8s  %-8s  %-6s  %-4s  %-8s  %-6s  %-7s" % (
         "Min", "Mean", "Max", "CofV", "Runs", "Change", "%", "P-value")
@@ -77,6 +79,8 @@ def formatBox(minAll, maxAll, stats):
 
     return ''.join(chars)
 
+HistogramChars = u'▁▂▃▄▅▆▇'
+
 def formatSamples(minAll, maxAll, stats):
     width = 40
     scale = (maxAll - minAll) / (width - 1)
@@ -85,9 +89,18 @@ def formatSamples(minAll, maxAll, stats):
         assert x >= minAll
         return int((x - minAll) // scale)
 
-    chars = [' '] * width
+    bins = [0] * width
+    maxCount = 0
     for x in stats.samples:
-        chars[pos(x)] = 'x' if chars[pos(x)] == ' ' else 'X'
+        i = pos(x)
+        bins[i] += 1
+        maxCount = max(maxCount, bins[i])
+
+    chars = [' '] * width
+    for i in range(len(chars)):
+        count = bins[i]
+        y = math.floor((count / maxCount) * (len(HistogramChars) - 1))
+        chars[i] = HistogramChars[y]
 
     return ''.join(chars)
 
