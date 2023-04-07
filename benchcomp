@@ -10,6 +10,7 @@ import re
 import signal
 import subprocess
 import sys
+import time
 import tempfile
 
 LibDir = os.path.join(os.path.dirname(__file__), 'lib')
@@ -32,8 +33,9 @@ def main():
 def parseArgs():
     parser = argparse.ArgumentParser(
         description = 'Run benchmarks and compare the results interactively')
+    parser.add_argument('--args', help='Arguments passed to every build')
     parser.add_argument('-t', '--test', help='Test suite to run')
-    parser.add_argument('--iterations', type=int, default=50,
+    parser.add_argument('--iterations', type=int, default=200,
                         help='The number of times to run each test')
     parser.add_argument('--show-samples', action='store_true')
     parser.add_argument('--gc-profile', action='store_true')
@@ -122,7 +124,7 @@ class DelayedKeyboardInterrupt(object):
 def runBenchmark(build, test, args):
     oldcwd = os.getcwd()
     os.chdir(test.dir)
-    cmd = [build.shell] + build.args + [test.script] + test.args
+    cmd = [build.shell] + build.args + args.args.split() + [test.script] + test.args
     env = dict()
 
     profilePath = None
@@ -139,8 +141,7 @@ def runBenchmark(build, test, args):
     elif args.perf:
         cmd = updateCommandForPerf(args, cmd)
 
-    subprocess.call('sync')
-    subprocess.call(['sleep', '1'])
+    time.sleep(0.2)
 
     proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
     if proc.returncode != 0:
@@ -252,8 +253,9 @@ def displayResults(out, builds, results, args, headerWidth):
             text = formatStats(stats, comp)
 
             samples = ""
-            if low != high and stats.count > 1 and len(statsForBuild) > 1:
-                text += "  " + formatBox(low, high, stats)
+            if stats.count > 1 and low != high:
+                if len(statsForBuild) > 1:
+                    text += "  " + formatBox(low, high, stats)
                 if args.show_samples:
                     samples = formatSamples(low, high, stats)
 
