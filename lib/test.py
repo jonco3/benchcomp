@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os.path
+import sys
 
 class Test:
     def __init__(self, name, dir, script, args = []):
