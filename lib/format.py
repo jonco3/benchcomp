@@ -52,7 +52,7 @@ def formatBox(minAll, maxAll, stats):
 
     def pos(x):
         assert x >= minAll
-        return int((x - minAll) // scale)
+        return math.floor((x - minAll) / scale)
 
     maxDev = stats.mean + stats.stdv / 2
     minDev = stats.mean - stats.stdv / 2
@@ -87,7 +87,7 @@ def formatSamples(minAll, maxAll, stats):
 
     def pos(x):
         assert x >= minAll
-        return int((x - minAll) // scale)
+        return math.floor((x - minAll) / scale)
 
     bins = [0] * width
     maxCount = 0
@@ -97,7 +97,7 @@ def formatSamples(minAll, maxAll, stats):
         maxCount = max(maxCount, bins[i])
 
     chars = [' '] * width
-    for i in range(len(chars)):
+    for i in range(pos(stats.min), min(pos(stats.max) + 1, len(chars))):
         count = bins[i]
         y = math.floor((count / maxCount) * (len(HistogramChars) - 1))
         chars[i] = HistogramChars[y]
