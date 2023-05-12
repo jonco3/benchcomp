@@ -20,7 +20,7 @@ class Build:
 
 def findShellInBuildDir(path):
     locations = [['shell'],
-                 ['dist', 'bin', 'shell'],
+                 ['dist', 'bin', 'js'],
                  ['d8']]
     for location in locations:
         shell = os.path.join(path, *location)
