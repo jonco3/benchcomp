@@ -19,9 +19,9 @@ class OctaneTest(Test):
 class LocalTest(Test):
     def __init__(self, spec):
         path, *args = spec.split(" ")
+        path = os.path.normpath(os.path.expanduser(path))
         if not os.path.exists(path):
             sys.exit(f"Test '{path}' not found")
 
-        path = os.path.normpath(path)
         dir, name = os.path.split(os.path.abspath(path))
         super().__init__(spec, dir, name, args)
