@@ -3,9 +3,11 @@
 # Run benchmarks and compare the results interactively.
 
 import argparse
+import json
 import math
 import os
 import os.path
+import platform
 import re
 import signal
 import subprocess
@@ -42,6 +44,7 @@ def parseArgs():
     parser.add_argument('--sys-usage', action='store_true')
     parser.add_argument('--perf', action='store_true')
     parser.add_argument('--geomean', action='store_true')
+    parser.add_argument('--output', '-o', help='Write results to file in JSON format')
     parser.add_argument('builds', nargs="+")
     return parser.parse_args()
 
@@ -102,6 +105,10 @@ def runTests(args, builds, tests):
                 if out:
                     with DelayedKeyboardInterrupt():
                         displayResults(out, builds, results, args, headerWidth)
+
+        if args.output:
+            with DelayedKeyboardInterrupt():
+                writeResultsToFile(builds, results, args)
 
     if not sys.stdout.isatty():
         out = display.File(sys.stdout)
@@ -279,6 +286,28 @@ def displayResults(out, builds, results, args, headerWidth):
                     diff = (mean - compareTo) / compareTo
                     text += "                                     %4.1f%%" % (diff * 100)
                 out.print("  %20s  %s" % (build.spec[-20:], text))
+
+def writeResultsToFile(builds, results, args):
+    data = []
+    for build in builds:
+        buildData = {
+            'build': build.spec,
+            'system': platform.system(),
+            'architecture': platform.machine(),
+            'results': dict()
+        }
+
+        for key in results.keys():
+            if build in results[key]:
+                stats = Stats(results[key][build])
+                if key.startswith('!'):
+                    key = key[1:]
+                buildData['results'][key] = stats.__dict__
+
+        data.append(buildData)
+
+    with open(args.output, "w") as f:
+        json.dump(data, f, allow_nan=False, indent=2)
 
 try:
     main()
