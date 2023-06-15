@@ -139,7 +139,7 @@ def runBenchmark(build, test, args):
         temp = tempfile.NamedTemporaryFile(delete=False)
         temp.close()
         profilePath = temp.name
-        env['JS_GC_PROFILE'] = '1'  # Ignore trivial slices for now
+        env['JS_GC_PROFILE'] = '0'
         env['JS_GC_PROFILE_NURSERY'] = '0'
         env['JS_GC_PROFILE_FILE'] = profilePath
 
