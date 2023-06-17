@@ -27,6 +27,8 @@ def summariseProfile(text, result, filterMostActiveRuntime = True):
 
     summarisePhaseTimes(result, majorFields, majorData)
 
+    summariseParallelMarking(result, majorFields, majorData)
+
 def findFirstMajorGC(result, majorFields, majorData):
     timestampField = majorFields.get('Timestamp')
     sizeField = majorFields.get('SizeKB')
@@ -250,6 +252,32 @@ def summariseData(fieldMap, data):
         time = int(fields[fieldMap['total']])
         totalTime += time
     return count, totalTime
+
+def summariseParallelMarking(result, majorFields, majorData):
+    if 'pmRuns' not in majorFields:
+        return  # No parallel marking data in profile
+
+    totalTimeField = majorFields['total']
+    iterationsField = majorFields['pmIts']
+    donationsField = majorFields['pmDons']
+    wordsDonatedField = majorFields['pmWrds']
+
+    timeTotal = 0
+    iterationsTotal = 0
+    donationsTotal = 0
+    wordsDonatedTotal = 0
+
+    for record in majorData:
+        timeTotal += int(record[totalTimeField])
+        iterationsTotal += int(record[iterationsField])
+        donationsTotal += int(record[donationsField])
+        wordsDonatedTotal += int(record[wordsDonatedField])
+
+    if timeTotal != 0:
+        result['Parallel marking donations per millisecond'] = donationsTotal / timeTotal
+    if donationsTotal != 0:
+        result['Parallel marking iterations per donation'] = iterationsTotal / donationsTotal
+        result['Parallel marking stack size at donation'] = 2 * wordsDonatedTotal / donationsTotal
 
 # Work out which runtime we're interested in. This is a heuristic that
 # may not always work.
