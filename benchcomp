@@ -259,16 +259,12 @@ def displayResults(out, builds, results, args, headerWidth):
             comp = compareStats(stats, compareTo)
             text = formatStats(stats, comp)
 
-            samples = ""
             if stats.count > 1 and low != high:
-                if len(statsForBuild) > 1:
-                    text += "  " + formatBox(low, high, stats)
+                text += "  " + formatBox(low, high, stats)
                 if args.show_samples:
-                    samples = formatSamples(low, high, stats)
+                    text += "  " + formatSamples(low, high, stats)
 
             out.print("  %20s  %s" % (build.spec[-20:], text))
-            if samples:
-                out.print("%*s  %s" % (headerWidth, '', samples))
 
     if args.geomean and count > 1 and not args.gc_profile:
         out.print()

@@ -99,8 +99,9 @@ def formatSamples(minAll, maxAll, stats):
     chars = [' '] * width
     for i in range(pos(stats.min), min(pos(stats.max) + 1, len(chars))):
         count = bins[i]
-        y = math.floor((count / maxCount) * (len(HistogramChars) - 1))
-        chars[i] = HistogramChars[y]
+        if count != 0:
+            y = math.floor((count / maxCount) * (len(HistogramChars) - 1))
+            chars[i] = HistogramChars[y]
 
     return ''.join(chars)
 
