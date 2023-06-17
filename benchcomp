@@ -235,6 +235,9 @@ def displayResults(out, builds, results, args, headerWidth):
                 continue
 
             stats = Stats(data)
+            if stats.min == 0 and stats.max == 0:
+                continue
+
             statsForBuild[build] = stats
             if args.geomean and key.startswith('!') and stats.mean != 0:
                 geomean[build] += math.log(stats.mean)
