@@ -195,13 +195,15 @@ def parseOutput(stdout, stderr, args, profilePath):
 
 def parseSysUsage(result, text):
     for line in text.splitlines():
-        match = re.match(r'\s+([^:]+):\s([\d\.]+)', line)
-        if not match:
-            continue
+        key, value = line.strip().split(": ")
 
-        key, value = match.group(1), match.group(2)
-        if '(kbytes)' in key:
-            value = int(value)
+        if value.endswith("%"):
+            value = int(value[:-1])
+        elif ":" in value:
+            hours, minsAndSecs = value.split(":")
+            value = int(hours) * 60 + float(minsAndSecs)
+        elif re.match(r"\d+(\.\d+)?$", value):
+            value = float(value)
         else:
             continue
 
@@ -249,6 +251,9 @@ def displayResults(out, builds, results, args, headerWidth):
                 low, high = min(low, stats.min), max(high, stats.max)
 
         if not statsForBuild:
+            continue
+
+        if low == high:
             continue
 
         if key.startswith('!'):
