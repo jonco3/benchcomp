@@ -23,9 +23,11 @@ def summariseProfile(text, result, filterMostActiveRuntime = True):
     if testCount != 0:
         summariseAllDataByInTest(result, majorFields, majorData, minorFields, minorData, True)
 
-    findFirstMajorGC(result, majorFields, majorData)
+    # Useful for scheduling changes only.
+    # findFirstMajorGC(result, majorFields, majorData)
 
-    summarisePhaseTimes(result, majorFields, majorData)
+    # These are super noisy and probably not that useful.
+    # summarisePhaseTimes(result, majorFields, majorData)
 
     summariseParallelMarking(result, majorFields, majorData)
 
@@ -219,6 +221,7 @@ def summariseAllData(result, majorFields, majorData, minorFields, minorData, key
     summariseMajorMinorData(result, majorFields, majorData, minorFields, minorData, keySuffix)
 
     result['Max heap size / KB' + keySuffix] = findMax(majorFields, majorData, 'SizeKB')
+    result['Max nursery size / KB' + keySuffix] = findMax(minorFields, minorData, 'NewKB')
 
     result['ALLOC_TRIGGER slices' + keySuffix] = \
         len(filterByReason(majorFields, majorData, 'ALLOC_TRIGGER'))
@@ -243,6 +246,8 @@ def summariseMajorMinorData(result, majorFields, majorData, minorFields, minorDa
     result['Minor GC count' + keySuffix] = minorCount
     result['Minor GC time' + keySuffix] = minorTime
     result['Total GC time' + keySuffix] = majorTime + minorTime
+    result['Mean major GC slice time'] = majorTime / majorCount
+    result['Mean minor GC time'] = minorTime / minorCount
 
 def summariseData(fieldMap, data):
     count = 0
