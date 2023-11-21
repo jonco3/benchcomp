@@ -45,6 +45,7 @@ def parseArgs():
     parser.add_argument('--perf', action='store_true')
     parser.add_argument('--geomean', action='store_true')
     parser.add_argument('--output', '-o', help='Write results to file in JSON format')
+    parser.add_argument('--numa', action='store_true', help='Bind CPU and memory to NUMA node 1')
     parser.add_argument('builds', nargs="+")
     return parser.parse_args()
 
@@ -142,6 +143,9 @@ def runBenchmark(build, test, args):
         env['JS_GC_PROFILE'] = '0'
         env['JS_GC_PROFILE_NURSERY'] = '0'
         env['JS_GC_PROFILE_FILE'] = profilePath
+
+    if args.numa:
+        cmd = ['numactl', '--cpunodebind=1', '--localalloc', '--'] + cmd
 
     if args.sys_usage:
         cmd = ['/usr/bin/time', '-v'] + cmd
