@@ -8,6 +8,7 @@ import math
 import os
 import os.path
 import platform
+import random
 import re
 import signal
 import subprocess
@@ -98,8 +99,8 @@ def runTests(args, builds, tests):
         out = display.Terminal()
 
     for i in range(args.iterations):
-        for build in builds:
-            for test in tests:
+        for build in shuffled(builds):
+            for test in shuffled(tests):
                 bmResults = runBenchmark(build, test, args)
                 for key in bmResults.keys():
                     addResult(builds, results, build, key, bmResults[key])
@@ -114,6 +115,11 @@ def runTests(args, builds, tests):
     if not sys.stdout.isatty():
         out = display.File(sys.stdout)
         displayResults(out, builds, results, args, headerWidth)
+
+def shuffled(list):
+    result = list.copy()
+    random.shuffle(result)
+    return result
 
 class DelayedKeyboardInterrupt(object):
     # From https://stackoverflow.com/a/21919644
