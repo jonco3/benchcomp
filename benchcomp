@@ -242,17 +242,20 @@ def displayResults(out, builds, results, args, headerWidth):
     out.clear()
 
     if args.geomean:
-        count = 0
         geomean = dict()
         for build in builds:
-            geomean[build] = 0
+            geomean[build] = (0, 0)
 
     for key in results.keys():
+        isResultKey = key.startswith('!')
+        keyName = key[1:] if isResultKey else key
+
         statsForBuild = dict()
         compareTo = None
         low = None
         high = None
         first = True
+
         for build in builds:
             data = results[key][build]
             if not data:
@@ -263,8 +266,9 @@ def displayResults(out, builds, results, args, headerWidth):
                 continue
 
             statsForBuild[build] = stats
-            if args.geomean and key.startswith('!') and stats.mean != 0:
-                geomean[build] += math.log(stats.mean)
+            if args.geomean and isResultKey and stats.mean != 0:
+                sumOfLogs, count = geomean[build]
+                geomean[build] = (sumOfLogs + math.log(stats.mean), count + 1)
             if first:
                 compareTo = stats
                 low, high = stats.min, stats.max
@@ -275,15 +279,7 @@ def displayResults(out, builds, results, args, headerWidth):
         if not statsForBuild:
             continue
 
-        if low == high:
-            continue
-
-        if key.startswith('!'):
-            key = key[1:]
-            if args.geomean:
-                count += 1
-
-        out.print(f"{key}:")
+        out.print(f"{keyName}:")
         for build in statsForBuild.keys():
             stats = statsForBuild[build]
             comp = compareStats(stats, compareTo)
@@ -296,14 +292,15 @@ def displayResults(out, builds, results, args, headerWidth):
 
             out.print("  %20s  %s" % (build.spec[-20:], text))
 
-    if args.geomean and count > 1 and not args.gc_profile:
+    if args.geomean:
         out.print()
-        out.print("Geometric mean:")
+        out.print("Geometric mean of means:")
         compareTo = None
         first = True
         for build in builds:
-            if geomean[build] != 0:
-                mean = math.exp(geomean[build] / count)
+            sumOfLogs, count = geomean[build]
+            if count != 0:
+                mean = math.exp(sumOfLogs / count)
                 text = "          %8s" % formatFloat(8, mean)
                 if first:
                     compareTo = mean
