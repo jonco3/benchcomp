@@ -18,28 +18,27 @@ class Stats:
         self.stdv = statistics.stdev(samples, self.mean) if self.count > 1 else 0
         self.cofv = self.stdv / self.mean if self.mean != 0 else 0
 
-    def compareTo(self, other):
-        return compareStats(self, other)
-
 class Comparison:
     def __init__(self, diff, factor, pvalue):
         self.diff = diff
         self.factor = factor
         self.pvalue = pvalue
 
-def compareStats(a, b):
+def compareStats(a, b, key='mean'):
     if b is None or a is b:
         return None
 
-    assert isinstance(a, Stats)
-    assert isinstance(b, Stats)
+    if not hasattr(a, key) or not hasattr(b, key):
+        raise "Bad key: " + key
 
-    diff = a.mean - b.mean
+    x = getattr(a, key)
+    y = getattr(b, key)
 
-    if b.mean == 0:
-        factor = None
-    else:
-        factor = diff / b.mean
+    diff = x - y
+
+    factor = None
+    if y != 0:
+        factor = diff / y
 
     p = None
     if a.count > 1 and b.count > 1 and a.mean != b.mean:

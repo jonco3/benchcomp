@@ -41,6 +41,7 @@ def parseArgs():
     parser.add_argument('--iterations', type=int, default=200,
                         help='The number of times to run each test')
     parser.add_argument('--show-samples', action='store_true')
+    parser.add_argument('-c', '--compare', choices=['min', 'mean', 'median', 'max'], default='mean')
     parser.add_argument('--gc-profile', action='store_true')
     parser.add_argument('--sys-usage', action='store_true')
     parser.add_argument('--perf', action='store_true')
@@ -282,7 +283,7 @@ def displayResults(out, builds, results, args, headerWidth):
         out.print(f"{keyName}:")
         for build in statsForBuild.keys():
             stats = statsForBuild[build]
-            comp = compareStats(stats, compareTo)
+            comp = compareStats(stats, compareTo, args.compare)
             text = formatStats(stats, comp)
 
             if stats.count > 1 and low != high:
