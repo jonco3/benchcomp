@@ -209,12 +209,18 @@ def parseOutput(stdout, stderr, args, profilePath):
 
 def parseSysUsage(result, text):
     for line in text.splitlines():
+        line = line.strip();
+        if line == "":
+            continue
+
         if platform.system() == "Darwin":
-            parts = line.strip().split(" ")
+            parts = line.split()
             value = parts[0]
+            if (parts[1] == "real"):
+                continue
             key = " ".join(parts[1:])
         else:
-            key, value = line.strip().split(": ")
+            key, value = line.split(": ")
 
         if value.endswith("%"):
             value = int(value[:-1])
