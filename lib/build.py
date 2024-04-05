@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os.path
+import platform
 import sys
 
 class Build:
@@ -25,7 +26,9 @@ def findShellInBuildDir(path):
                  ['bin', 'jsc']]
     for location in locations:
         shell = os.path.join(path, *location)
-        if os.path.isfile(shell):
+        if platform.system() == 'Windows':
+            shell += '.exe'
+        if os.path.exists(shell):
             return shell
 
     sys.exit(f"No shell found under path: {path}")
