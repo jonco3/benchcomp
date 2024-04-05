@@ -27,7 +27,7 @@ def summariseProfile(text, result, filterMostActiveRuntime = True):
     # findFirstMajorGC(result, majorFields, majorData)
 
     # These are super noisy and probably not that useful.
-    # summarisePhaseTimes(result, majorFields, majorData)
+    summarisePhaseTimes(result, majorFields, majorData)
 
     summariseParallelMarking(result, majorFields, majorData)
 
