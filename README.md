@@ -54,3 +54,7 @@ The columns have the following meaning:
  -  Change: Absolule difference between the mean result for this build and the mean result of the first build.
  -  %: Percentage difference between the mean result for this build and the mean result of the first build.
  -  P-Value: Result of a statistical significance test comparing the results for this build against those of the first build.
+
+# Installation requirements
+
+$ pip3 install ansi==0.3.6
