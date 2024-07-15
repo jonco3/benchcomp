@@ -102,9 +102,8 @@ def runTests(args, builds, tests):
     for i in range(args.iterations):
         for build in shuffled(builds):
             for test in shuffled(tests):
-                bmResults = runBenchmark(build, test, args)
-                for key in bmResults.keys():
-                    addResult(builds, results, build, key, bmResults[key])
+                newResults = runBenchmark(build, test, args)
+                addResults(builds, results, build, newResults)
                 if out:
                     with DelayedKeyboardInterrupt():
                         displayResults(out, builds, results, args, headerWidth)
@@ -174,40 +173,36 @@ def runBenchmark(build, test, args):
 
     return parseOutput(proc.stdout, proc.stderr, args, profilePath)
 
-def addResult(builds, results, build, key, result):
-    if key not in results:
-        results[key] = dict()
-        for b in builds:
-            results[key][b] = []
-
-    results[key][build].append(result)
-
 def parseOutput(stdout, stderr, args, profilePath):
-    result = dict()
+    results = dict()
     for line in stdout.splitlines():
         match = re.match(r'(\w+):\s(\d+(:?\.\d+)?)', line)
         if match:
             key, value = match.group(1), match.group(2)
-            result['!' + key] = float(value)
+            key = '!' + key  # These are displayed first.
+            value = float(value)
+            if key not in results:
+                results[key] = []
+            results[key].append(value)
 
     if profilePath:
         with open(profilePath) as f:
-            gcprofile.summariseProfile(f.read(), result, False)
+            gcprofile.summariseProfile(f.read(), results, False)
         os.remove(profilePath)
 
     if args.sys_usage:
-        parseSysUsage(result, stderr)
+        parseSysUsage(results, stderr)
 
     if args.perf:
-        parsePerfOutput(result, stderr)
+        parsePerfOutput(results, stderr)
 
-    if not result:
+    if not results:
         print(stdout + stderr)
         sys.exit("Can't parse output")
 
-    return result
+    return results
 
-def parseSysUsage(result, text):
+def parseSysUsage(results, text):
     for line in text.splitlines():
         line = line.strip();
         if line == "":
@@ -236,7 +231,24 @@ def parseSysUsage(result, text):
             value = value / 1024
             key += " (KB)"
 
-        result[key] = value
+        results[key] = value
+
+def addResults(builds, results, build, newResults):
+    for key in newResults.keys():
+        if key not in results:
+            results[key] = dict()
+            for b in builds:
+                results[key][b] = []
+
+        result = newResults[key]
+        if isinstance(result, list):
+            for value in result:
+               addResult(results, build, key, value)
+        else:
+            addResult(results, build, key, result)
+
+def addResult(results, build, key, result):
+    results[key][build].append(result)
 
 def printHeader():
     header = (24 * " ") + statsHeader()

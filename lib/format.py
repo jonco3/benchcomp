@@ -5,8 +5,8 @@
 import math
 
 def statsHeader():
-    return "%-8s  %-8s  %-8s  %-6s  %-4s  %-8s  %-6s  %-7s" % (
-        "Min", "Mean", "Max", "CofV", "Runs", "Change", "%", "P-value")
+    return "%-8s  %-8s  %-8s  %-6s  %-6s  %-6s  %-7s" % (
+        "Min", "Mean", "Max", "CofV", "Runs", "Change", "P-value")
 
 def formatFloat(width, x):
     # General purpose number format that fits the most significant
@@ -20,15 +20,14 @@ def formatFloat(width, x):
 
 def formatStats(stats, comp = None):
     diff = formatFloat(8, comp.diff) if comp else ""
-
-    percent = "%5.1f%%" % (comp.factor * 100) if comp and comp.factor != None else ""
+    change = "%5.1f%%" % (comp.factor * 100) if comp and comp.factor != None else ""
     pvalue = "%7.2f" % comp.pvalue if comp and comp.pvalue != None else ""
 
-    return "%8s  %8s  %8s  %5.1f%%  %4d  %8s  %6s  %7s" % (
+    return "%8s  %8s  %8s  %5.1f%%  %6d  %6s  %7s" % (
         formatFloat(8, stats.min),
         formatFloat(8, stats.mean),
         formatFloat(8, stats.max),
-        stats.cofv * 100, stats.count, diff, percent, pvalue)
+        stats.cofv * 100, stats.count, change, pvalue)
 
 def compactStatsHeader(withComparison):
     header = "%-8s  %-6s" % ("Mean", "CofV")
