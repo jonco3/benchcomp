@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import os
 import os.path
 import sys
+import utils
 
 class Test:
     def __init__(self, name, dir, script, args = []):
@@ -9,12 +11,19 @@ class Test:
         self.dir = dir
         self.script = script
         self.args = args
+        if not os.path.isfile(os.path.join(dir, script)):
+            sys.exit(f"Test script '${script}' not found in ${dir}")
 
 class OctaneTest(Test):
-    def __init__(self, name, script=None):
-        if not script:
+    def __init__(self, name=None):
+        if not name:
+            name = 'octane'
+            script= 'run.js'
+        else:
             script = f"run-{name}.js"
-        super().__init__(name, 'octane', script)
+        utils.chdir_to_source_root()
+        dir = "js/src/octane"
+        super().__init__(name, dir, script)
 
 class LocalTest(Test):
     def __init__(self, spec):

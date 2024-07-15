@@ -69,7 +69,7 @@ def testsToRun(args):
 def getKnownTests():
     return [
         # Run all tests sequentially in a single runtime.
-        OctaneTest('octane', 'run.js'),
+        OctaneTest(),
 
         # Run individual tests independently.
         OctaneTest('richards'),
