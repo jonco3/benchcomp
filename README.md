@@ -58,3 +58,9 @@ The columns have the following meaning:
 # Installation requirements
 
 $ pip3 install ansi==0.3.6
+
+# Development
+
+Format the code with yapf (must be installed):
+
+$ ./scripts/format.sh

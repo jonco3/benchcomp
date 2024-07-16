@@ -35,19 +35,30 @@ def main():
 
 def parseArgs():
     parser = argparse.ArgumentParser(
-        description = 'Run benchmarks and compare the results interactively')
-    parser.add_argument('--args', default='', help='Arguments passed to every build')
+        description='Run benchmarks and compare the results interactively')
+    parser.add_argument('--args',
+                        default='',
+                        help='Arguments passed to every build')
     parser.add_argument('-t', '--test', help='Test suite to run')
-    parser.add_argument('--iterations', type=int, default=200,
+    parser.add_argument('--iterations',
+                        type=int,
+                        default=200,
                         help='The number of times to run each test')
     parser.add_argument('--show-samples', action='store_true')
-    parser.add_argument('-c', '--compare', choices=['min', 'mean', 'median', 'max'], default='mean')
+    parser.add_argument('-c',
+                        '--compare',
+                        choices=['min', 'mean', 'median', 'max'],
+                        default='mean')
     parser.add_argument('--gc-profile', action='store_true')
     parser.add_argument('--sys-usage', action='store_true')
     parser.add_argument('--perf', action='store_true')
     parser.add_argument('--geomean', action='store_true')
-    parser.add_argument('--output', '-o', help='Write results to file in JSON format')
-    parser.add_argument('--numa', action='store_true', help='Bind CPU and memory to NUMA node 1')
+    parser.add_argument('--output',
+                        '-o',
+                        help='Write results to file in JSON format')
+    parser.add_argument('--numa',
+                        action='store_true',
+                        help='Bind CPU and memory to NUMA node 1')
     parser.add_argument('builds', nargs="+")
     return parser.parse_args()
 
@@ -138,7 +149,8 @@ class DelayedKeyboardInterrupt(object):
 def runBenchmark(build, test, args):
     oldcwd = os.getcwd()
     os.chdir(test.dir)
-    cmd = [build.shell] + build.args + args.args.split() + [test.script] + test.args
+    cmd = [build.shell] + build.args + args.args.split() + [test.script
+                                                            ] + test.args
     env = dict()
 
     profilePath = None
@@ -204,7 +216,7 @@ def parseOutput(stdout, stderr, args, profilePath):
 
 def parseSysUsage(results, text):
     for line in text.splitlines():
-        line = line.strip();
+        line = line.strip()
         if line == "":
             continue
 
@@ -243,7 +255,7 @@ def addResults(builds, results, build, newResults):
         result = newResults[key]
         if isinstance(result, list):
             for value in result:
-               addResult(results, build, key, value)
+                addResult(results, build, key, value)
         else:
             addResult(results, build, key, result)
 
@@ -320,7 +332,8 @@ def displayResults(out, builds, results, args):
                     first = False
                 else:
                     diff = (mean - compareTo) / compareTo
-                    text += "                                     %4.1f%%" % (diff * 100)
+                    text += "                                     %4.1f%%" % (
+                        diff * 100)
                 out.print("  %20s  %s" % (build.spec[-20:], text))
 
 def printHeader(out):

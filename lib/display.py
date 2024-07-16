@@ -7,6 +7,7 @@ import ansi.cursor
 class Null:
     def print(self, text=''):
         pass
+
     def clear(self):
         pass
 

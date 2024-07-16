@@ -15,7 +15,8 @@ class Stats:
         self.max = max(samples)
         self.median = statistics.median(samples)
         self.mean = statistics.mean(samples)
-        self.stdv = statistics.stdev(samples, self.mean) if self.count > 1 else 0
+        self.stdv = statistics.stdev(samples,
+                                     self.mean) if self.count > 1 else 0
         self.cofv = self.stdv / self.mean if self.mean != 0 else 0
 
 class Comparison:
@@ -44,6 +45,9 @@ def compareStats(a, b, key='mean'):
     if a.count > 1 and b.count > 1 and a.mean != b.mean:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            p = stats.ttest_ind(a.samples, b.samples, equal_var=False, trim=0.2).pvalue
+            p = stats.ttest_ind(a.samples,
+                                b.samples,
+                                equal_var=False,
+                                trim=0.2).pvalue
 
     return Comparison(diff, factor, p)

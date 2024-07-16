@@ -6,7 +6,7 @@ import sys
 import utils
 
 class Test:
-    def __init__(self, name, dir, script, args = []):
+    def __init__(self, name, dir, script, args=[]):
         self.name = name
         self.dir = dir
         self.script = script
@@ -18,7 +18,7 @@ class OctaneTest(Test):
     def __init__(self, name=None):
         if not name:
             name = 'octane'
-            script= 'run.js'
+            script = 'run.js'
         else:
             script = f"run-{name}.js"
         utils.chdir_to_source_root()

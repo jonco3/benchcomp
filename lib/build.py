@@ -20,10 +20,7 @@ class Build:
         return f"Build({self.name})"
 
 def findShellInBuildDir(path):
-    locations = [['shell'],
-                 ['dist', 'bin', 'js'],
-                 ['d8'],
-                 ['bin', 'jsc']]
+    locations = [['shell'], ['dist', 'bin', 'js'], ['d8'], ['bin', 'jsc']]
     for location in locations:
         shell = os.path.join(path, *location)
         if platform.system() == 'Windows':

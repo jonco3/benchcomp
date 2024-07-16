@@ -18,16 +18,15 @@ def formatFloat(width, x):
         return s
     return "%*.*g" % (width, width - 5, x)
 
-def formatStats(stats, comp = None):
+def formatStats(stats, comp=None):
     diff = formatFloat(8, comp.diff) if comp else ""
-    change = "%5.1f%%" % (comp.factor * 100) if comp and comp.factor != None else ""
+    change = "%5.1f%%" % (comp.factor *
+                          100) if comp and comp.factor != None else ""
     pvalue = "%7.2f" % comp.pvalue if comp and comp.pvalue != None else ""
 
-    return "%8s  %8s  %8s  %5.1f%%  %6d  %6s  %7s" % (
-        formatFloat(8, stats.min),
-        formatFloat(8, stats.mean),
-        formatFloat(8, stats.max),
-        stats.cofv * 100, stats.count, change, pvalue)
+    return "%8s  %8s  %8s  %5.1f%%  %6d  %6s  %7s" % (formatFloat(
+        8, stats.min), formatFloat(8, stats.mean), formatFloat(
+            8, stats.max), stats.cofv * 100, stats.count, change, pvalue)
 
 def compactStatsHeader(withComparison):
     header = "%-8s  %-6s" % ("Mean", "CofV")
@@ -35,11 +34,12 @@ def compactStatsHeader(withComparison):
         header += "  %-6s  %-7s" % ("%", "P-value")
     return header
 
-def formatCompactStats(stats, comp = None):
+def formatCompactStats(stats, comp=None):
     line = "%8s  %5.1f%%" % (formatFloat(8, stats.mean), stats.cofv * 100)
 
     if comp:
-        percent = "%5.1f%%" % (comp.factor * 100) if comp.factor != None else ""
+        percent = "%5.1f%%" % (comp.factor *
+                               100) if comp.factor != None else ""
         pvalue = "%7.2f" % comp.pvalue if comp.pvalue != None else ""
         line += "  %6s  %7s" % (percent, pvalue)
 
@@ -103,4 +103,3 @@ def formatSamples(minAll, maxAll, stats):
             chars[i] = HistogramChars[y]
 
     return ''.join(chars)
-

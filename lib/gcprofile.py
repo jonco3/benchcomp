@@ -9,8 +9,9 @@ import re
 StartTestText = 'Testing url'
 EndTestText = 'PageCompleteCheck returned true'
 
-def summariseProfile(text, result, filterMostActiveRuntime = True):
-    majorFields, majorData, minorFields, minorData, testCount = parseOutput(text)
+def summariseProfile(text, result, filterMostActiveRuntime=True):
+    majorFields, majorData, minorFields, minorData, testCount = parseOutput(
+        text)
 
     if filterMostActiveRuntime:
         runtime = findMostActiveRuntimeByFrequency(majorData + minorData)
@@ -21,7 +22,8 @@ def summariseProfile(text, result, filterMostActiveRuntime = True):
 
     summariseAllData(result, majorFields, majorData, minorFields, minorData)
     if testCount != 0:
-        summariseAllDataByInTest(result, majorFields, majorData, minorFields, minorData, True)
+        summariseAllDataByInTest(result, majorFields, majorData, minorFields,
+                                 minorData, True)
 
     # Useful for scheduling changes only.
     # findFirstMajorGC(result, majorFields, majorData)
@@ -67,7 +69,8 @@ def countMajorGCs(result, majorFields, majorData):
 
     count = 0
     for line in majorData:
-        if "0 ->" in line[statesField] and not isShutdownReason(line[reasonField]):
+        if "0 ->" in line[statesField] and not isShutdownReason(
+                line[reasonField]):
             count += 1
 
     result['Major GC count'] = count
@@ -178,7 +181,8 @@ def parseOutput(text):
             minorData.append(fields)
             continue
 
-    assert len(minorData) != 0 or len(majorData) != 0, "No profile data present"
+    assert len(minorData) != 0 or len(
+        majorData) != 0, "No profile data present"
 
     return majorFields, majorData, minorFields, minorData, testCount
 
@@ -209,19 +213,29 @@ def splitWithSpans(line, spans):
 
     return fields
 
-def summariseAllDataByInTest(result, majorFields, majorData, minorFields, minorData, inTest):
+def summariseAllDataByInTest(result, majorFields, majorData, minorFields,
+                             minorData, inTest):
     majorData = filterByInTest(majorFields, majorData, inTest)
     minorData = filterByInTest(minorFields, minorData, inTest)
 
     suffix = ' in test' if inTest else ' outside test'
 
-    summariseAllData(result, majorFields, majorData, minorFields, minorData, suffix)
+    summariseAllData(result, majorFields, majorData, minorFields, minorData,
+                     suffix)
 
-def summariseAllData(result, majorFields, majorData, minorFields, minorData, keySuffix = ''):
-    summariseMajorMinorData(result, majorFields, majorData, minorFields, minorData, keySuffix)
+def summariseAllData(result,
+                     majorFields,
+                     majorData,
+                     minorFields,
+                     minorData,
+                     keySuffix=''):
+    summariseMajorMinorData(result, majorFields, majorData, minorFields,
+                            minorData, keySuffix)
 
-    result['Max heap size / KB' + keySuffix] = findMax(majorFields, majorData, 'SizeKB')
-    result['Max nursery size / KB' + keySuffix] = findMax(minorFields, minorData, 'NewKB')
+    result['Max heap size / KB' + keySuffix] = findMax(majorFields, majorData,
+                                                       'SizeKB')
+    result['Max nursery size / KB' + keySuffix] = findMax(
+        minorFields, minorData, 'NewKB')
 
     result['ALLOC_TRIGGER slices' + keySuffix] = \
         len(filterByReason(majorFields, majorData, 'ALLOC_TRIGGER'))
@@ -236,7 +250,8 @@ def summariseAllData(result, majorFields, majorData, minorFields, minorData, key
         result['Mean full nusery promotion rate' + keySuffix] = \
             meanPromotionRate(minorFields, filterByReason(minorFields, minorData, 'OUT_OF_NURSERY'))
 
-def summariseMajorMinorData(result, majorFields, majorData, minorFields, minorData, keySuffix):
+def summariseMajorMinorData(result, majorFields, majorData, minorFields,
+                            minorData, keySuffix):
     majorCount, majorTime = summariseData(majorFields, majorData)
     minorCount, minorTime = summariseData(minorFields, minorData)
     minorTime /= 1000
@@ -279,10 +294,13 @@ def summariseParallelMarking(result, majorFields, majorData):
         wordsDonatedTotal += int(record[wordsDonatedField])
 
     if timeTotal != 0:
-        result['Parallel marking donations per millisecond'] = donationsTotal / timeTotal
+        result[
+            'Parallel marking donations per millisecond'] = donationsTotal / timeTotal
     if donationsTotal != 0:
-        result['Parallel marking iterations per donation'] = iterationsTotal / donationsTotal
-        result['Parallel marking stack size at donation'] = 2 * wordsDonatedTotal / donationsTotal
+        result[
+            'Parallel marking iterations per donation'] = iterationsTotal / donationsTotal
+        result[
+            'Parallel marking stack size at donation'] = 2 * wordsDonatedTotal / donationsTotal
 
 # Work out which runtime we're interested in. This is a heuristic that
 # may not always work.
@@ -307,7 +325,8 @@ def findMostActiveRuntimeByFrequency(data):
     return mostActive
 
 def filterByRuntime(data, runtime):
-    return list(filter(lambda f: f[0] == runtime[0] and f[1] == runtime[1], data))
+    return list(
+        filter(lambda f: f[0] == runtime[0] and f[1] == runtime[1], data))
 
 def filterByInTest(fields, data, inTest):
     i = fields['testNum']
@@ -319,7 +338,9 @@ def filterByReason(fields, data, reason):
 
 def filterByFullStoreBufferReason(fields, data):
     i = fields['Reason']
-    return list(filter(lambda f: f[i].startswith('FULL') and f[i].endswith('BUFFER'), data))
+    return list(
+        filter(lambda f: f[i].startswith('FULL') and f[i].endswith('BUFFER'),
+               data))
 
 def meanPromotionRate(fields, data):
     if len(data) == 0:
