@@ -99,22 +99,24 @@ def runTests(args, builds, tests):
     if sys.stdout.isatty():
         out = display.Terminal()
 
+    for (build, test) in generateTestRuns(args, builds, tests):
+        newResults = runBenchmark(build, test, args)
+        addResults(builds, results, build, newResults)
+        with DelayedKeyboardInterrupt():
+            if out:
+                displayResults(out, builds, results, args, headerWidth)
+            if args.output:
+                writeResultsToFile(builds, results, args)
+
+    if not out:
+        out = display.File(sys.stdout)
+        displayResults(out, builds, results, args, headerWidth)
+
+def generateTestRuns(args, builds, tests):
     for i in range(args.iterations):
         for build in shuffled(builds):
             for test in shuffled(tests):
-                newResults = runBenchmark(build, test, args)
-                addResults(builds, results, build, newResults)
-                if out:
-                    with DelayedKeyboardInterrupt():
-                        displayResults(out, builds, results, args, headerWidth)
-
-        if args.output:
-            with DelayedKeyboardInterrupt():
-                writeResultsToFile(builds, results, args)
-
-    if not sys.stdout.isatty():
-        out = display.File(sys.stdout)
-        displayResults(out, builds, results, args, headerWidth)
+                yield (build, test)
 
 def shuffled(list):
     result = list.copy()
