@@ -29,7 +29,7 @@ def summariseProfile(text, result, filterMostActiveRuntime=True):
     # findFirstMajorGC(result, majorFields, majorData)
 
     # These are super noisy and probably not that useful.
-    summarisePhaseTimes(result, majorFields, majorData)
+    # summarisePhaseTimes(result, majorFields, majorData)
 
     summariseParallelMarking(result, majorFields, majorData)
 
@@ -274,33 +274,29 @@ def summariseData(fieldMap, data):
     return count, totalTime
 
 def summariseParallelMarking(result, majorFields, majorData):
-    if 'pmRuns' not in majorFields:
+    if 'pmDons' not in majorFields:
         return  # No parallel marking data in profile
 
-    totalTimeField = majorFields['total']
-    iterationsField = majorFields['pmIts']
     donationsField = majorFields['pmDons']
-    wordsDonatedField = majorFields['pmWrds']
 
-    timeTotal = 0
-    iterationsTotal = 0
+    count = 0
+    results = []
     donationsTotal = 0
-    wordsDonatedTotal = 0
-
     for record in majorData:
-        timeTotal += int(record[totalTimeField])
-        iterationsTotal += int(record[iterationsField])
-        donationsTotal += int(record[donationsField])
-        wordsDonatedTotal += int(record[wordsDonatedField])
+        donations = int(record[donationsField])
+        if donations == 0:
+            continue
 
-    if timeTotal != 0:
-        result[
-            'Parallel marking donations per millisecond'] = donationsTotal / timeTotal
-    if donationsTotal != 0:
-        result[
-            'Parallel marking iterations per donation'] = iterationsTotal / donationsTotal
-        result[
-            'Parallel marking stack size at donation'] = 2 * wordsDonatedTotal / donationsTotal
+        count += 1
+        results.append(donations)
+        donationsTotal += donations
+
+    if count == 0:
+        return
+
+    result['Parallel marking donations'] = results
+    result[
+        'Parallel marking donations per collection'] = donationsTotal / count
 
 # Work out which runtime we're interested in. This is a heuristic that
 # may not always work.
