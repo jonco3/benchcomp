@@ -93,8 +93,6 @@ def runTests(args, builds, tests):
     # Nested map of lists keyed by result key then by build.
     results = dict()
 
-    headerWidth = printHeader()
-
     out = None
     if sys.stdout.isatty():
         out = display.Terminal()
@@ -104,13 +102,13 @@ def runTests(args, builds, tests):
         addResults(builds, results, build, newResults)
         with DelayedKeyboardInterrupt():
             if out:
-                displayResults(out, builds, results, args, headerWidth)
+                displayResults(out, builds, results, args)
             if args.output:
                 writeResultsToFile(builds, results, args)
 
     if not out:
         out = display.File(sys.stdout)
-        displayResults(out, builds, results, args, headerWidth)
+        displayResults(out, builds, results, args)
 
 def generateTestRuns(args, builds, tests):
     for i in range(args.iterations):
@@ -252,15 +250,9 @@ def addResults(builds, results, build, newResults):
 def addResult(results, build, key, result):
     results[key][build].append(result)
 
-def printHeader():
-    header = (24 * " ") + statsHeader()
-    width = len(header)
-    print(header)
-    print(width * "=")
-    return width
-
-def displayResults(out, builds, results, args, headerWidth):
+def displayResults(out, builds, results, args):
     out.clear()
+    printHeader(out)
 
     if args.geomean:
         geomean = dict()
@@ -330,6 +322,12 @@ def displayResults(out, builds, results, args, headerWidth):
                     diff = (mean - compareTo) / compareTo
                     text += "                                     %4.1f%%" % (diff * 100)
                 out.print("  %20s  %s" % (build.spec[-20:], text))
+
+def printHeader(out):
+    header = (24 * " ") + statsHeader()
+    width = len(header)
+    out.print(header)
+    out.print(width * "=")
 
 def writeResultsToFile(builds, results, args):
     data = []
