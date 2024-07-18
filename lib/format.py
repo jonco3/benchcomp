@@ -3,10 +3,14 @@
 # Format benchmark data for display.
 
 import math
+import sys
 
-def statsHeader():
-    return "%-8s  %-8s  %-8s  %-8s  %-6s  %-6s  %-6s  %-7s" % (
-        "Min", "Mean", "Median", "Max", "CofV", "Runs", "Change", "P-value")
+ColumnNames = ("Min", "Mean", "Median", "Max", "CofV", "Runs", "Change*", "P-value")
+
+def statsHeader(key=None):
+    columns = map(lambda name: (name + "*") if key == name.lower() else name,
+                  ColumnNames)
+    return "%-8s  %-8s  %-8s  %-8s  %-6s  %-6s  %-6s  %-7s" % tuple(columns)
 
 def formatFloat(width, x):
     # General purpose number format that fits the most significant

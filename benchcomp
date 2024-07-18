@@ -30,6 +30,8 @@ import display
 import gcprofile
 from getch import KeyGetter
 
+CompareKeys = ['min', 'mean', 'median', 'max', 'cofv']
+
 def main():
     args = parseArgs()
     builds = buildsToTest(args)
@@ -50,7 +52,7 @@ def parseArgs():
     parser.add_argument('--show-samples', action='store_true')
     parser.add_argument('-c',
                         '--compare',
-                        choices=['min', 'mean', 'median', 'max'],
+                        choices=CompareKeys,
                         default='mean')
     parser.add_argument('--gc-profile', action='store_true')
     parser.add_argument('--sys-usage', action='store_true')
@@ -124,7 +126,7 @@ def runTests(args, builds, tests):
                 addResults(builds, results, event.build, event.results)
             else:
                 assert isinstance(event, KeyPress)
-                if event.key == 'q':
+                if not handleKeyPress(args, event.key):
                     break  # Quit
 
             if out:
@@ -137,6 +139,21 @@ def runTests(args, builds, tests):
         if not out:
             out = display.File(sys.stdout)
             displayResults(out, builds, results, args)
+
+def handleKeyPress(args, key):
+    # q: quit.
+    if key == 'q':
+        return False
+
+    # c: cycle through comparision keys.
+    if key.lower() == 'c':
+        i = CompareKeys.index(args.compare)
+        i += 1 if key.islower() else -1
+        i = i % len(CompareKeys)
+        args.compare = CompareKeys[i]
+
+    # Ignore unknown.
+    return True
 
 def startTestRunnerThread(eventQueue, args, builds, tests):
     thread = threading.Thread(target=testRunnerThread,
@@ -302,7 +319,7 @@ def addResult(results, build, key, result):
 
 def displayResults(out, builds, results, args):
     out.clear()
-    printHeader(out)
+    printHeader(out, args)
 
     if args.geomean:
         geomean = dict()
@@ -374,8 +391,8 @@ def displayResults(out, builds, results, args):
                         diff * 100)
                 out.print("  %20s  %s" % (build.spec[-20:], text))
 
-def printHeader(out):
-    header = (24 * " ") + statsHeader()
+def printHeader(out, args):
+    header = (24 * " ") + statsHeader(args.compare)
     width = len(header)
     out.print(header)
     out.print(width * "=")
