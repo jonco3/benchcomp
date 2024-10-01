@@ -277,28 +277,34 @@ def parseSysUsage(results, text):
 
         if platform.system() == "Darwin":
             parts = line.split()
-            value = parts[0]
-            if (parts[1] == "real"):
+            if parts[1] == "real" and parts[3] == "user" and parts[5] == "sys":
+                addSysUsageResult(results, "Real time", parts[0])
+                addSysUsageResult(results, "User time", parts[2])
+                addSysUsageResult(results, "System time", parts[4])
                 continue
+            value = parts[0]
             key = " ".join(parts[1:])
         else:
             key, value = line.split(": ")
 
-        if value.endswith("%"):
-            value = int(value[:-1])
-        elif ":" in value:
-            hours, minsAndSecs = value.split(":")
-            value = int(hours) * 60 + float(minsAndSecs)
-        elif re.match(r"\d+(\.\d+)?$", value):
-            value = float(value)
-        else:
-            continue
+        addSysUsageResult(results, key, value)
 
-        if platform.system() == "Darwin" and "size" in key:
-            value = value / 1024
-            key += " (KB)"
+def addSysUsageResult(results, key, value):
+    if value.endswith("%"):
+        value = int(value[:-1])
+    elif ":" in value:
+        hours, minsAndSecs = value.split(":")
+        value = int(hours) * 60 + float(minsAndSecs)
+    elif re.match(r"\d+(\.\d+)?$", value):
+        value = float(value)
+    else:
+        return
 
-        results[key] = value
+    if platform.system() == "Darwin" and "size" in key:
+        value = value / 1024
+        key += " (KB)"
+
+    results[key] = value
 
 def addResults(builds, results, build, newResults):
     for key in newResults.keys():
