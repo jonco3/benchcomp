@@ -232,8 +232,13 @@ def summariseAllData(result,
     summariseMajorMinorData(result, majorFields, majorData, minorFields,
                             minorData, keySuffix)
 
-    result['Max heap size / KB' + keySuffix] = findMax(majorFields, majorData,
-                                                       'SizeKB')
+    result['Max GC heap size / KB' + keySuffix] = \
+        findMax(majorFields, majorData, 'SizeKB')
+
+    if 'MllcKB' in majorFields:
+        result['Max malloc heap size / KB' + keySuffix] = \
+            findMax(majorFields, majorData, 'MllcKB')
+
     result['Max nursery size / KB' + keySuffix] = findMax(
         minorFields, minorData, 'NewKB')
 
@@ -248,7 +253,8 @@ def summariseAllData(result,
             len(filterByFullStoreBufferReason(minorFields, minorData))
 
         result['Mean full nusery promotion rate' + keySuffix] = \
-            meanPromotionRate(minorFields, filterByReason(minorFields, minorData, 'OUT_OF_NURSERY'))
+            meanPromotionRate(minorFields,
+                              filterByReason(minorFields, minorData, 'OUT_OF_NURSERY'))
 
 def summariseMajorMinorData(result, majorFields, majorData, minorFields,
                             minorData, keySuffix):
