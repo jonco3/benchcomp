@@ -350,13 +350,12 @@ def displayResults(out, builds, results, args):
                 continue
 
             stats = Stats(data)
-            if stats.min == 0 and stats.max == 0:
-                continue
-
             statsForBuild[build] = stats
+
             if args.geomean and isResultKey and stats.mean != 0:
                 sumOfLogs, count = geomean[build]
                 geomean[build] = (sumOfLogs + math.log(stats.mean), count + 1)
+
             if first:
                 compareTo = stats
                 low, high = stats.min, stats.max
@@ -364,7 +363,7 @@ def displayResults(out, builds, results, args):
             else:
                 low, high = min(low, stats.min), max(high, stats.max)
 
-        if not statsForBuild:
+        if not statsForBuild or (low == high and not isResultKey):
             continue
 
         out.print(f"{keyName}:")
