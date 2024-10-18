@@ -3,6 +3,7 @@
 # A clearable display.
 
 import ansi.cursor
+import shutil
 
 class Null:
     def print(self, text=''):
@@ -13,15 +14,21 @@ class Null:
 
 class Terminal:
     def __init__(self):
-        self.linesDisplayed = 0
+        self.reset()
 
     def print(self, text=''):
-        print(text)
+        if self.linesDisplayed + 1 >= self.height:
+            return
+        print(text[:self.width])
         self.linesDisplayed += 1
 
     def clear(self):
         for i in range(self.linesDisplayed):
             print(ansi.cursor.up() + ansi.cursor.erase_line(), end='')
+        self.reset();
+
+    def reset(self):
+        (self.width, self.height) = shutil.get_terminal_size()
         self.linesDisplayed = 0
 
 class File:
