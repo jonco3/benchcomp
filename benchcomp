@@ -3,6 +3,7 @@
 # Run benchmarks and compare the results interactively.
 
 import argparse
+import copy
 import json
 import math
 import os
@@ -41,9 +42,6 @@ def main():
 def parseArgs():
     parser = argparse.ArgumentParser(
         description='Run benchmarks and compare the results interactively')
-    parser.add_argument('--args',
-                        default='',
-                        help='Arguments passed to every build')
     parser.add_argument('-t', '--test', help='Test suite to run')
     parser.add_argument('--iterations',
                         type=int,
@@ -64,11 +62,48 @@ def parseArgs():
     parser.add_argument('--numa',
                         action='store_true',
                         help='Bind CPU and memory to NUMA node 1')
+    parser.add_argument('--args',
+                        default='',
+                        help='Extra arguments passed to every build')
+    parser.add_argument('--gc-param',
+                        default='',
+                        help='Set a GC parameter for every build')
+    parser.add_argument('--repeat-with-gc-params',
+                        default='',
+                        help='Run a single build with different GC params')
     parser.add_argument('builds', nargs="+")
     return parser.parse_args()
 
 def buildsToTest(args):
-    return list(map(Build, args.builds))
+    builds = list(map(Build, args.builds))
+
+    if args.args:
+        extra_args = args.args.split()
+        for build in builds:
+            build.args.extend(extra_args)
+
+    if args.gc_param:
+        extra_args = ['--gc-param', args.gc_param]
+        for build in builds:
+            build.args.extend(extra_args)
+
+    # Repeat builds for different GC param values if specified.
+    if args.repeat_with_gc_params:
+        opts = args.repeat_with_gc_params.split('=')
+        assert len(opts) == 2
+        param, values = opts
+        values = values.split(',')
+        newBuilds = []
+        for build in builds:
+            for value in values:
+                b = copy.deepcopy(build)
+                arg = f"--gc-param={param}={value}"
+                b.args.append(arg)
+                b.spec += " " + arg
+                newBuilds.append(b)
+        builds = newBuilds
+
+    return builds
 
 def testsToRun(args):
     allTests = getKnownTests()
@@ -208,8 +243,7 @@ def shuffled(list):
 def runBenchmark(build, test, args):
     oldcwd = os.getcwd()
     os.chdir(test.dir)
-    cmd = [build.shell] + build.args + args.args.split() + [test.script
-                                                            ] + test.args
+    cmd = [build.shell] + build.args + [test.script] + test.args
     env = dict()
 
     profilePath = None
