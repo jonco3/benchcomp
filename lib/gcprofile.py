@@ -18,6 +18,8 @@ def summariseProfile(text, result, filterMostActiveRuntime=True):
         majorData = filterByRuntime(majorData, runtime)
         minorData = filterByRuntime(minorData, runtime)
 
+    removeShutdownGCs(majorFields, majorData, minorFields, minorData)
+
     countMajorGCs(result, majorFields, majorData)
 
     summariseAllData(result, majorFields, majorData, minorFields, minorData)
@@ -32,6 +34,20 @@ def summariseProfile(text, result, filterMostActiveRuntime=True):
     summarisePhaseTimes(result, majorFields, majorData)
 
     summariseParallelMarking(result, majorFields, majorData)
+
+def removeShutdownGCs(majorFields, majorData, minorFields, minorData):
+    reasonField = majorFields.get('Reason')
+    while isShutdownReason(majorData[-1][reasonField]):
+        majorData.pop()
+    if majorData[-1][reasonField] == "FINISH_GC":
+        majorData.pop()
+
+    reasonField = minorFields.get('Reason')
+    if minorData[-1][reasonField] == "EVICT_NURSERY":
+        minorData.pop()
+
+def isShutdownReason(reason):
+    return 'SHUTDOWN' in reason or 'DESTROY' in reason or reason == 'ROOTS_REMOVED'
 
 def findFirstMajorGC(result, majorFields, majorData):
     timestampField = majorFields.get('Timestamp')
@@ -49,11 +65,13 @@ def findFirstMajorGC(result, majorFields, majorData):
         break
 
 def summarisePhaseTimes(result, majorFields, majorData):
+    reasonField = majorFields.get('Reason')
     fieldNames = ['bgwrk', 'waitBG', 'prep', 'mark', 'sweep', 'cmpct']
     fields = [majorFields.get(name) for name in fieldNames]
     totals = [0 for name in fieldNames]
 
     for line in majorData:
+        assert not isShutdownReason(line[reasonField])
         for i in range(len(fields)):
             value = line[fields[i]]
             if value:
@@ -69,14 +87,11 @@ def countMajorGCs(result, majorFields, majorData):
 
     count = 0
     for line in majorData:
-        if "0 ->" in line[statesField] and not isShutdownReason(
-                line[reasonField]):
+        assert not isShutdownReason(line[reasonField])
+        if "0 ->" in line[statesField]:
             count += 1
 
     result['Major GC count'] = count
-
-def isShutdownReason(reason):
-    return 'SHUTDOWN' in reason or 'DESTROY' in reason or reason == 'ROOTS_REMOVED'
 
 def extractHeapSizeData(text):
     majorFields, majorData, _, _, _ = parseOutput(text)
@@ -234,13 +249,19 @@ def summariseAllData(result,
 
     result['Max GC heap size / KB' + keySuffix] = \
         findMax(majorFields, majorData, 'SizeKB')
+    result['Median GC heap size / KB' + keySuffix] = \
+        calcMedian(majorFields, majorData, 'SizeKB')
 
     if 'MllcKB' in majorFields:
         result['Max malloc heap size / KB' + keySuffix] = \
             findMax(majorFields, majorData, 'MllcKB')
+        result['Median malloc heap size / KB' + keySuffix] = \
+            calcMedian(majorFields, majorData, 'MllcKB')
 
-    result['Max nursery size / KB' + keySuffix] = findMax(
-        minorFields, minorData, 'NewKB')
+    result['Max nursery size / KB' + keySuffix] = \
+        findMax(minorFields, minorData, 'NewKB')
+    result['Median nursery size / KB' + keySuffix] = \
+        calcMedian(minorFields, minorData, 'NewKB')
 
     result['ALLOC_TRIGGER slices' + keySuffix] = \
         len(filterByReason(majorFields, majorData, 'ALLOC_TRIGGER'))
@@ -366,6 +387,19 @@ def findMax(fields, data, key):
         result = max(result, int(line[i]))
 
     return result
+
+def calcMedian(fields, data, key):
+    field = fields[key]
+    samples = list(map(lambda line: int(line[field]), data))
+    count = len(samples)
+    if count == 0:
+        return 0
+
+    i = count // 2
+    if count % 2 == 1:
+        return samples[i]
+
+    return (samples[i - 1] + samples[i]) / 2
 
 def ensure(condition, error):
     if not condition:
