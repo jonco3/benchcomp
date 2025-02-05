@@ -16,39 +16,44 @@ def formatFloat(width, x):
     # General purpose number format that fits the most significant
     # digits possible in |width|. Only uses scientific notation if
     # necessary.
+    # This is tricky because e.g. %5f can yeild more than 5 characters.
     assert width >= 5
+    if x is None:
+        return " " * width
     s = "%*.*g" % (width, width - 1, x)
     if len(s) <= width:
         return s
-    return "%*.*g" % (width, width - 5, x)
+    s = "%*.*g" % (width, width - 5, x)
+    return s[:width]
 
-def formatStats(stats, comp=None):
-    diff = formatFloat(8, comp.diff) if comp else ""
-    change = "%5.1f%%" % (comp.factor *
-                          100) if comp and comp.factor != None else ""
-    pvalue = "%7.2f" % comp.pvalue if comp and comp.pvalue != None else ""
+def formatFloat2(width, x):
+    assert width >= 5
+    if x is None:
+        return " " * width
+    return "%*.2f" % (width, x)
 
-    data = (formatFloat(8, stats.min), formatFloat(8, stats.mean),
-            formatFloat(8, stats.median), formatFloat(8, stats.max),
-            stats.cofv * 100, stats.count, change, pvalue)
-    return "%8s  %8s  %8s  %8s  %5.1f%%  %6d  %6s  %7s" % data
+def formatPercent(width, x):
+    assert width >= 5
+    if x is None:
+        return " " * width
+    return "%*.1f%%" % (width - 1, x)
 
-def compactStatsHeader(withComparison):
-    header = "%-8s  %-6s" % ("Mean", "CofV")
-    if withComparison:
-        header += "  %-6s  %-7s" % ("%", "P-value")
-    return header
+def formatInt(width, x):
+    if x is None:
+        return " " * width
+    return "%*i" % (width, x)
 
-def formatCompactStats(stats, comp=None):
-    line = "%8s  %5.1f%%" % (formatFloat(8, stats.mean), stats.cofv * 100)
+def formatStats(stats, comp, args):
+    change = comp.factor * 100 if comp and comp.factor != None else None
+    pvalue = comp.pvalue if comp and comp.pvalue != None else None
 
-    if comp:
-        percent = "%5.1f%%" % (comp.factor *
-                               100) if comp.factor != None else ""
-        pvalue = "%7.2f" % comp.pvalue if comp.pvalue != None else ""
-        line += "  %6s  %7s" % (percent, pvalue)
-
-    return line
+    fields = [formatFloat(8, stats.min), formatFloat(8, stats.mean),
+              formatFloat(8, stats.median), formatFloat(8, stats.max),
+              formatFloat(6, stats.cofv * 100), formatInt(6, stats.count),
+              formatPercent(6, change), formatFloat2(7, pvalue)]
+    delimiter = ", " if args.csv else "  "
+    return delimiter.join(fields)
+#    return "%8s  %8s  %8s  %8s  %5.1f%%  %6d  %6s  %7s" % data
 
 def formatBox(minAll, maxAll, stats):
     width = 40

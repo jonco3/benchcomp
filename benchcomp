@@ -71,6 +71,8 @@ def parseArgs():
     parser.add_argument('--repeat-with-gc-params',
                         default='',
                         help='Run a single build with different GC params')
+    parser.add_argument('--csv', action='store_true',
+                        help='Produce output in CSV format')
     parser.add_argument('builds', nargs="+")
     return parser.parse_args()
 
@@ -150,7 +152,8 @@ def runTests(args, builds, tests):
 
     with KeyGetter() as keyGetter:
         eventQueue = queue.Queue()
-        startKeyboardInputThread(eventQueue, keyGetter)
+        if sys.stdout.isatty():
+            startKeyboardInputThread(eventQueue, keyGetter)
         startTestRunnerThread(eventQueue, args, builds, tests)
 
         while True:
@@ -365,7 +368,8 @@ def addResult(results, build, key, result):
 
 def displayResults(out, builds, results, args):
     out.clear()
-    printHeader(out, args)
+    if not args.csv:
+        printHeader(out, args)
 
     if args.geomean:
         geomean = dict()
@@ -404,20 +408,25 @@ def displayResults(out, builds, results, args):
         if not statsForBuild or (low == high and not isResultKey):
             continue
 
-        out.print(f"{keyName}:")
+        if not args.csv:
+            out.print(f"{keyName}:")
+
         for build in statsForBuild.keys():
             stats = statsForBuild[build]
             comp = compareStats(stats, compareTo, args.compare)
-            text = formatStats(stats, comp)
+            text = formatStats(stats, comp, args)
 
-            if stats.count > 1 and low != high:
+            if not args.csv and stats.count > 1 and low != high:
                 text += "  " + formatBox(low, high, stats)
                 if args.show_samples:
                     text += "  " + formatSamples(low, high, stats)
 
-            out.print("  %20s  %s" % (build.spec[-20:], text))
+            if args.csv:
+                out.print("%s, %s, %s" % (keyName, build.spec, text))
+            else:
+                out.print("  %20s  %s" % (build.spec[-20:], text))
 
-    if args.geomean:
+    if args.geomean and not args.csv:
         out.print()
         out.print("Geometric mean of means:")
         compareTo = None
