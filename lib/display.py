@@ -25,7 +25,7 @@ class Terminal:
     def clear(self):
         for i in range(self.linesDisplayed):
             print(ansi.cursor.up() + ansi.cursor.erase_line(), end='')
-        self.reset();
+        self.reset()
 
     def reset(self):
         (self.width, self.height) = shutil.get_terminal_size()

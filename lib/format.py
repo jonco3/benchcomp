@@ -5,7 +5,8 @@
 import math
 import sys
 
-ColumnNames = ("Min", "Mean", "Median", "Max", "CofV", "Runs", "Change*", "P-value")
+ColumnNames = ("Min", "Mean", "Median", "Max", "CofV", "Runs", "Change*",
+               "P-value")
 
 def statsHeader(key=None):
     columns = map(lambda name: (name + "*") if key == name.lower() else name,
@@ -47,12 +48,19 @@ def formatStats(stats, comp, args):
     change = comp.factor * 100 if comp and comp.factor != None else None
     pvalue = comp.pvalue if comp and comp.pvalue != None else None
 
-    fields = [formatFloat(8, stats.min), formatFloat(8, stats.mean),
-              formatFloat(8, stats.median), formatFloat(8, stats.max),
-              formatFloat(6, stats.cofv * 100), formatInt(6, stats.count),
-              formatPercent(6, change), formatFloat2(7, pvalue)]
+    fields = [
+        formatFloat(8, stats.min),
+        formatFloat(8, stats.mean),
+        formatFloat(8, stats.median),
+        formatFloat(8, stats.max),
+        formatFloat(6, stats.cofv * 100),
+        formatInt(6, stats.count),
+        formatPercent(6, change),
+        formatFloat2(7, pvalue)
+    ]
     delimiter = ", " if args.csv else "  "
     return delimiter.join(fields)
+
 #    return "%8s  %8s  %8s  %8s  %5.1f%%  %6d  %6s  %7s" % data
 
 def formatBox(minAll, maxAll, stats):

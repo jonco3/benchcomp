@@ -4,6 +4,8 @@ import os.path
 import platform
 import sys
 
+serial = 1
+
 class Build:
     def __init__(self, spec):
         command = spec.split()
@@ -15,6 +17,9 @@ class Build:
         self.name = os.path.basename(self.path)
         self.shell = os.path.abspath(shell)
         self.args = command[1:]
+        global serial
+        self.id = serial
+        serial += 1
 
     def __repr__(self):
         return f"Build({self.name})"
