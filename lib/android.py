@@ -67,6 +67,24 @@ def initAndroid(builds, tests, args):
         # Update dir attribute to the Android-local path
         test.dir = path
 
+def pushBinary(build, binary, dstDir):
+    print(f"Syncing {build.name} {binary}...")
+
+    src = os.path.join(build.path, 'dist', 'bin', binary)
+    assert os.path.isfile(src)
+    srcSum = runOrExit(['sha1sum', src])[0].splitlines()[0].split()[0];
+    assert len(srcSum) == 40
+
+    dst = f"{dstDir}/{binary}"
+    dstSum = remoteShell(['sha1sum', dst, '||', 'echo', 'missing'])[0].split()[0];
+    assert dstSum == 'missing' or len(dstSum) == 40
+
+    if dstSum != srcSum:
+        print(f"  {dstSum} != {srcSum} => sync")
+        runOrExit(['adb', 'push', src, dst])
+    else:
+        print(f"  {dstSum} == {srcSum} => already present")
+
 def runRemote(build, dir, command, env):
     env["LD_LIBRARY_PATH"] = DestPath + "build" + str(build.id)
     for key in env:
@@ -76,11 +94,6 @@ def runRemote(build, dir, command, env):
 
 def remoteShell(command):
     return runOrExit(['adb', 'shell'] + command)
-
-def pushBinary(build, name, path):
-    print(f"Syncing {build.name} {name}...")
-    src = os.path.join(build.path, 'dist', 'bin', name)
-    runOrExit(['adb', 'push', '--sync', src, path])
 
 def syncDir(src, dst):
     print(f"Syncing dir {src} to {dst}...")
