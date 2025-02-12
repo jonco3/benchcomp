@@ -22,8 +22,6 @@ DestPath = "/data/local/tmp/"
 def initAndroid(builds, tests, args):
     if args.gc_profile:
         sys.exit("Not implemented for Android: --gc-profile")
-    if args.sys_usage:
-        sys.exit("Not implemented for Android: --sys-usage")
     if args.perf:
         sys.exit("Not implemented for Android: --perf")
     if args.numa:

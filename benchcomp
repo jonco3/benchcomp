@@ -265,7 +265,8 @@ def runBenchmark(build, test, args):
 
     if args.sys_usage:
         flag = "-l" if platform.system() == "Darwin" else "-v"
-        cmd = ['/usr/bin/time', flag] + cmd
+        path = "/system/bin" if args.android else "/usr/bin"
+        cmd = [f'{path}/time', flag] + cmd
     elif args.perf:
         cmd = updateCommandForPerf(args, cmd)
 
