@@ -98,7 +98,7 @@ def formatBox(minAll, maxAll, stats):
 
 HistogramChars = u'▁▂▃▄▅▆▇'
 
-def formatSamples(minAll, maxAll, stats):
+def formatHistogram(minAll, maxAll, stats):
     width = 40
     scale = (maxAll - minAll) / (width - 1)
 
@@ -119,5 +119,16 @@ def formatSamples(minAll, maxAll, stats):
         if count != 0:
             y = math.floor((count / maxCount) * (len(HistogramChars) - 1))
             chars[i] = HistogramChars[y]
+
+    return ''.join(chars)
+
+def formatSamples(minAll, maxAll, stats):
+    width = 40
+    scale = (len(HistogramChars) - 1) / (stats.max - stats.min)
+
+    chars = [' '] * width
+    for i in range(min(len(stats.samples), width)):
+        y = math.floor((stats.samples[i] - stats.min) * scale)
+        chars[i] = HistogramChars[y]
 
     return ''.join(chars)

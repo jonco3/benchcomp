@@ -50,6 +50,7 @@ def parseArgs():
                         type=int,
                         default=200,
                         help='The number of times to run each test')
+    parser.add_argument('--show-histogram', action='store_true')
     parser.add_argument('--show-samples', action='store_true')
     parser.add_argument('-c', '--compare', choices=CompareKeys, default='mean')
     parser.add_argument('--gc-profile', action='store_true')
@@ -194,8 +195,14 @@ def handleKeyPress(args, key):
         i = i % len(CompareKeys)
         args.compare = CompareKeys[i]
 
+    # h: toggle show histogram setting
+    if key == 'h':
+        args.show_histogram = not args.show_histogram
+        args.show_samples = False
+
     # s: toggle show samples setting
     if key == 's':
+        args.show_histogram = False
         args.show_samples = not args.show_samples
 
     # Ignore unknown.
@@ -436,6 +443,8 @@ def displayResults(out, builds, results, args):
 
             if not args.csv and stats.count > 1 and low != high:
                 text += "  " + formatBox(low, high, stats)
+                if args.show_histogram:
+                    text += "  " + formatHistogram(low, high, stats)
                 if args.show_samples:
                     text += "  " + formatSamples(low, high, stats)
 
