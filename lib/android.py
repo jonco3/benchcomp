@@ -80,10 +80,7 @@ def pushBinary(build, binary, dstDir):
     assert dstSum == 'missing' or len(dstSum) == 40
 
     if dstSum != srcSum:
-        print(f"  {dstSum} != {srcSum} => sync")
         runOrExit(['adb', 'push', src, dst])
-    else:
-        print(f"  {dstSum} == {srcSum} => already present")
 
 def runRemote(build, dir, command, env):
     env["LD_LIBRARY_PATH"] = DestPath + "build" + str(build.id)
@@ -91,6 +88,11 @@ def runRemote(build, dir, command, env):
         command = [f"{key}={env[key]}"] + command
     command = ["cd", dir, "&&"] + command
     return remoteShell(command)
+
+def getMaxCpuFrequency():
+    out, _ = remoteShell(['cat', '/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq'])
+    freqs = map(int, out.splitlines())
+    return max(freqs)
 
 def remoteShell(command):
     return runOrExit(['adb', 'shell'] + command)

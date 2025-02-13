@@ -22,7 +22,7 @@ LibDir = os.path.join(os.path.dirname(__file__), 'lib')
 sys.path.insert(0, LibDir)
 
 from build import Build
-from android import initAndroid, runRemote
+from android import initAndroid, runRemote, getMaxCpuFrequency
 from format import *
 from perf import *
 from stats import *
@@ -270,7 +270,9 @@ def runBenchmark(build, test, args):
     elif args.perf:
         cmd = updateCommandForPerf(args, cmd)
 
-    time.sleep(0.2)
+    if not args.android:
+        # On Android pausing scales down CPU frequency for inactivity.
+        time.sleep(0.2)
 
     if args.android:
         stdout, stderr = runRemote(build, test.dir, cmd, env)
@@ -295,6 +297,7 @@ def runBenchmark(build, test, args):
 
 def parseOutput(stdout, stderr, args, profilePath):
     results = dict()
+
     for line in stdout.splitlines():
         match = re.match(r'([\w\s]+):\s+(\d+(:?\.\d+)?)', line)
         if match:
@@ -304,6 +307,9 @@ def parseOutput(stdout, stderr, args, profilePath):
             if key not in results:
                 results[key] = []
             results[key].append(value)
+
+    if args.android:
+        results["Max CPU frequency"] = getMaxCpuFrequency()
 
     if profilePath:
         with open(profilePath) as f:
