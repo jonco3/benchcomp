@@ -318,8 +318,8 @@ def parseOutput(stdout, stderr, args, profilePath):
                 results[key] = []
             results[key].append(value)
 
-    if args.android:
-        results["Max CPU frequency"] = android.getMaxCpuFrequency()
+    # if args.android:
+    #     results["Max CPU frequency"] = android.getMaxCpuFrequency()
 
     if profilePath:
         if args.android:
@@ -334,7 +334,7 @@ def parseOutput(stdout, stderr, args, profilePath):
         parseSysUsage(results, stderr)
 
     if args.perf:
-        parsePerfOutput(results, stderr)
+        parsePerfOutput(results, stdout, stderr, args)
 
     if not results:
         print("Failed to parse any result from output:")

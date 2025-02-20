@@ -18,8 +18,6 @@ from test import OctaneTest
 DestPath = "/data/local/tmp/"
 
 def init(builds, tests, args):
-    if args.perf:
-        sys.exit("Not implemented for Android: --perf")
     if args.numa:
         sys.exit("Not implemented for Android: --numa")
 
@@ -47,7 +45,7 @@ def init(builds, tests, args):
 
         pushBinary(build, 'js', path)
         pushBinary(build, 'libmozglue.so', path)
-        pushBinary(build, 'libnss3.so', path)
+        pushBinary(build, 'libnss3.so', path, True)
 
         # Update shell attribute to the Android-local path
         build.shell = path + "/js"
@@ -63,10 +61,12 @@ def init(builds, tests, args):
         # Update dir attribute to the Android-local path
         test.dir = path
 
-def pushBinary(build, binary, dstDir):
+def pushBinary(build, binary, dstDir, skipIfMissing=False):
     print(f"Syncing {build.name} {binary}...")
 
     src = os.path.join(build.path, 'dist', 'bin', binary)
+    if skipIfMissing and not os.path.isfile(src):
+        return
     assert os.path.isfile(src)
     srcSum = runOrExit(['sha1sum', src])[0].splitlines()[0].split()[0];
     assert len(srcSum) == 40
