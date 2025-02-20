@@ -13,15 +13,11 @@ import sys
 
 from test import OctaneTest
 
-# todo: how to get test files across?
-#  - for octane it's two files and we can copy these
-#  - use adbsync (pip install BetterADBSync)
+# todo: improve copy test files
 
 DestPath = "/data/local/tmp/"
 
-def initAndroid(builds, tests, args):
-    if args.gc_profile:
-        sys.exit("Not implemented for Android: --gc-profile")
+def init(builds, tests, args):
     if args.perf:
         sys.exit("Not implemented for Android: --perf")
     if args.numa:
@@ -94,6 +90,14 @@ def getMaxCpuFrequency():
     freqs = map(int, out.splitlines())
     return max(freqs)
 
+def getProfilePath():
+    path = DestPath + "gcProfile.txt"
+    remoteShell(['rm', '-f', path])
+    return path
+
+def readProfile(path):
+    return remoteShell(['cat', path])[0]
+
 def remoteShell(command):
     return runOrExit(['adb', 'shell'] + command)
 
@@ -102,15 +106,9 @@ def syncDir(src, dst):
     runOrExit(['adbsync', 'push', src, dst])
 
 def runOrExit(command):
-    #print(f"runOrExit {' '.join(command)}")
     p = subprocess.run(command, capture_output=True, text=True)
     if p.returncode != 0:
         sys.exit(f"Failed to run command:\n{' '.join(command)}: {p.stderr}")
     stdout = p.stdout.strip()
     stderr = p.stderr.strip()
-    #if stdout:
-    #    print(stdout)
-    #if stderr:
-    #    print(stderr)
-    #print('---')
     return stdout, stderr

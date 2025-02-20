@@ -124,9 +124,11 @@ def formatHistogram(minAll, maxAll, stats):
 
 def formatSamples(minAll, maxAll, stats):
     width = 40
-    scale = (len(HistogramChars) - 1) / (stats.max - stats.min)
+    if stats.max == stats.min:
+        return ' ' * width
 
     chars = [' '] * width
+    scale = (len(HistogramChars) - 1) / (stats.max - stats.min)
     for i in range(min(len(stats.samples), width)):
         y = math.floor((stats.samples[i] - stats.min) * scale)
         chars[i] = HistogramChars[y]

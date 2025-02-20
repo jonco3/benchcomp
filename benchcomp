@@ -21,8 +21,8 @@ import queue
 LibDir = os.path.join(os.path.dirname(__file__), 'lib')
 sys.path.insert(0, LibDir)
 
+import android
 from build import Build
-from android import initAndroid, runRemote, getMaxCpuFrequency
 from format import *
 from perf import *
 from stats import *
@@ -39,7 +39,7 @@ def main():
     builds = buildsToTest(args)
     tests = testsToRun(args)
     if args.android:
-        initAndroid(builds, tests, args)
+        android.init(builds, tests, args)
     runTests(args, builds, tests)
 
 def parseArgs():
@@ -260,9 +260,12 @@ def runBenchmark(build, test, args):
 
     profilePath = None
     if args.gc_profile:
-        temp = tempfile.NamedTemporaryFile(delete=False)
-        temp.close()
-        profilePath = temp.name
+        if args.android:
+            profilePath = android.getProfilePath()
+        else:
+            temp = tempfile.NamedTemporaryFile(delete=False)
+            temp.close()
+            profilePath = temp.name
         env['JS_GC_PROFILE'] = '0'
         env['JS_GC_PROFILE_NURSERY'] = '0'
         env['JS_GC_PROFILE_FILE'] = profilePath
@@ -282,7 +285,7 @@ def runBenchmark(build, test, args):
         time.sleep(0.2)
 
     if args.android:
-        stdout, stderr = runRemote(build, test.dir, cmd, env)
+        stdout, stderr = android.runRemote(build, test.dir, cmd, env)
     else:
         oldcwd = os.getcwd()
         os.chdir(test.dir)
@@ -316,12 +319,16 @@ def parseOutput(stdout, stderr, args, profilePath):
             results[key].append(value)
 
     if args.android:
-        results["Max CPU frequency"] = getMaxCpuFrequency()
+        results["Max CPU frequency"] = android.getMaxCpuFrequency()
 
     if profilePath:
-        with open(profilePath) as f:
-            gcprofile.summariseProfile(f.read(), results, False)
-        os.remove(profilePath)
+        if args.android:
+            profileData = android.readProfile(profilePath)
+        else:
+            with open(profilePath) as f:
+                profileData = f.read()
+            os.remove(profilePath)
+        gcprofile.summariseProfile(profileData, results, False)
 
     if args.sys_usage:
         parseSysUsage(results, stderr)
