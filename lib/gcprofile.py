@@ -2,6 +2,7 @@
 #
 # Summarise GC profiling information from log data.
 
+import math
 import re
 
 # Detect whether we're currently running a raptor test, or between
@@ -9,7 +10,7 @@ import re
 StartTestText = 'Testing url'
 EndTestText = 'PageCompleteCheck returned true'
 
-def summariseProfile(text, result, filterMostActiveRuntime=True):
+def summariseProfile(text, result, categories, filterMostActiveRuntime=True):
     majorFields, majorData, minorFields, minorData, testCount = parseOutput(
         text)
 
@@ -20,30 +21,31 @@ def summariseProfile(text, result, filterMostActiveRuntime=True):
 
     removeShutdownGCs(majorFields, majorData, minorFields, minorData)
 
-    countMajorGCs(result, majorFields, majorData)
+    if 'major' in categories:
+        countMajorGCs(result, majorFields, majorData)
 
-    summariseAllData(result, majorFields, majorData, minorFields, minorData)
+    summariseAllData(result, majorFields, majorData, minorFields, minorData, categories)
     if testCount != 0:
         summariseAllDataByInTest(result, majorFields, majorData, minorFields,
-                                 minorData, True)
+                                 minorData, categories, True)
 
-    # Useful for scheduling changes only.
-    # findFirstMajorGC(result, majorFields, majorData)
+    if 'major' in categories:
+        # Useful for scheduling changes only.
+        # findFirstMajorGC(result, majorFields, majorData)
 
-    # These are super noisy and probably not that useful.
-    summarisePhaseTimes(result, majorFields, majorData)
-
-    summariseParallelMarking(result, majorFields, majorData)
+        # These are super noisy and probably not that useful.
+        summarisePhaseTimes(result, majorFields, majorData)
+        summariseParallelMarking(result, majorFields, majorData)
 
 def removeShutdownGCs(majorFields, majorData, minorFields, minorData):
     reasonField = majorFields.get('Reason')
-    while isShutdownReason(majorData[-1][reasonField]):
+    while majorData and isShutdownReason(majorData[-1][reasonField]):
         majorData.pop()
-    if majorData[-1][reasonField] == "FINISH_GC":
+    if majorData and majorData[-1][reasonField] == "FINISH_GC":
         majorData.pop()
 
     reasonField = minorFields.get('Reason')
-    if minorData[-1][reasonField] == "EVICT_NURSERY":
+    if minorData and minorData[-1][reasonField] == "EVICT_NURSERY":
         minorData.pop()
 
 def isShutdownReason(reason):
@@ -52,12 +54,12 @@ def isShutdownReason(reason):
 def findFirstMajorGC(result, majorFields, majorData):
     timestampField = majorFields.get('Timestamp')
     sizeField = majorFields.get('SizeKB')
-    timeField = majorFields.get('total')
+    totalField = majorFields.get('total')
     statesField = majorFields.get('States')
 
     for line in majorData:
         # Skip collections where we don't collect anything.
-        if int(line[timeField]) == 0 and line[statesField] == "0 -> 0":
+        if float(line[totalField]) == 0 and line[statesField] == "0 -> 0":
             continue
 
         result['First major GC'] = float(line[timestampField])
@@ -75,7 +77,7 @@ def summarisePhaseTimes(result, majorFields, majorData):
         for i in range(len(fields)):
             value = line[fields[i]]
             if value:
-                totals[i] += int(value)
+                totals[i] += float(value)
 
     for i in range(len(fields)):
         key = 'Total major GC time in phase ' + fieldNames[i]
@@ -229,101 +231,122 @@ def splitWithSpans(line, spans):
     return fields
 
 def summariseAllDataByInTest(result, majorFields, majorData, minorFields,
-                             minorData, inTest):
+                             minorData, categories, inTest):
     majorData = filterByInTest(majorFields, majorData, inTest)
     minorData = filterByInTest(minorFields, minorData, inTest)
 
     suffix = ' in test' if inTest else ' outside test'
 
     summariseAllData(result, majorFields, majorData, minorFields, minorData,
-                     suffix)
+                     categories, suffix)
 
 def summariseAllData(result,
                      majorFields,
                      majorData,
                      minorFields,
                      minorData,
+                     categories,
                      keySuffix=''):
     summariseMajorMinorData(result, majorFields, majorData, minorFields,
-                            minorData, keySuffix)
+                            minorData, categories, keySuffix)
 
-    result['Max GC heap size / KB' + keySuffix] = \
-        findMax(majorFields, majorData, 'SizeKB')
-    result['Median GC heap size / KB' + keySuffix] = \
-        calcMedian(majorFields, majorData, 'SizeKB')
-
-    if 'MllcKB' in majorFields:
+    if 'major' in categories and 'size' in categories:
+        result['Max GC heap size / KB' + keySuffix] = \
+            findMax(majorFields, majorData, 'SizeKB')
+        result['Median GC heap size / KB' + keySuffix] = \
+            calcMedian(majorFields, majorData, 'SizeKB')
         result['Max malloc heap size / KB' + keySuffix] = \
             findMax(majorFields, majorData, 'MllcKB')
         result['Median malloc heap size / KB' + keySuffix] = \
             calcMedian(majorFields, majorData, 'MllcKB')
 
-    result['Max nursery size / KB' + keySuffix] = \
-        findMax(minorFields, minorData, 'NewKB')
-    result['Median nursery size / KB' + keySuffix] = \
-        calcMedian(minorFields, minorData, 'NewKB')
+    if 'minor' in categories and 'size' in categories:
+        result['Max nursery size / KB' + keySuffix] = \
+            findMax(minorFields, minorData, 'NewKB')
+        result['Median nursery size / KB' + keySuffix] = \
+            calcMedian(minorFields, minorData, 'NewKB')
 
-    result['ALLOC_TRIGGER slices' + keySuffix] = \
-        len(filterByReason(majorFields, majorData, 'ALLOC_TRIGGER'))
+    if 'major' in categories and 'reason' in categories:
+        result['ALLOC_TRIGGER slices' + keySuffix] = \
+            len(filterByReason(majorFields, majorData, 'ALLOC_TRIGGER'))
+        result['TOO_MUCH_MALLOC slices' + keySuffix] = \
+            len(filterByReason(majorFields, majorData, 'TOO_MUCH_MALLOC'))
 
-    result['TOO_MUCH_MALLOC slices' + keySuffix] = \
-        len(filterByReason(majorFields, majorData, 'TOO_MUCH_MALLOC'))
-
-    if minorData:
+    if 'minor' in categories and 'reason' in categories:
         result['Full store buffer nursery collections' + keySuffix] = \
             len(filterByFullStoreBufferReason(minorFields, minorData))
 
+    if 'minor' in categories:
         result['Mean full nusery promotion rate' + keySuffix] = \
             meanPromotionRate(minorFields,
                               filterByReason(minorFields, minorData, 'OUT_OF_NURSERY'))
 
+
 def summariseMajorMinorData(result, majorFields, majorData, minorFields,
-                            minorData, keySuffix):
+                            minorData, categories, keySuffix):
     majorCount, majorTime = summariseData(majorFields, majorData)
     minorCount, minorTime = summariseData(minorFields, minorData)
     minorTime /= 1000
     totalTime = majorTime + minorTime
-    result['Major GC slices' + keySuffix] = majorCount
-    result['Major GC time' + keySuffix] = majorTime
-    result['Minor GC count' + keySuffix] = minorCount
-    result['Minor GC time' + keySuffix] = minorTime
+
+    if 'major' in categories:
+        result['Major GC slices' + keySuffix] = majorCount
+        result['Major GC time' + keySuffix] = majorTime
+        if majorCount:
+            result['Mean major GC slice time'] = majorTime / majorCount
+
+    if 'minor' in categories:
+        result['Minor GC count' + keySuffix] = minorCount
+        result['Minor GC time' + keySuffix] = minorTime
+        if minorCount:
+            result['Mean minor GC time'] = minorTime / minorCount
+
     result['Total GC time' + keySuffix] = majorTime + minorTime
-    result['Mean major GC slice time'] = majorTime / majorCount
-    result['Mean minor GC time'] = minorTime / minorCount
 
 def summariseData(fieldMap, data):
     count = 0
     totalTime = 0
     for fields in data:
-        count += 1
-        time = int(fields[fieldMap['total']])
+        time = float(fields[fieldMap['total']])
         totalTime += time
+        # experiment: don't count zero length slices/collections
+        if time != 0:
+            count += 1
     return count, totalTime
 
 def summariseParallelMarking(result, majorFields, majorData):
-    if 'pmDons' not in majorFields:
+    if 'pmDons' not in majorFields or 'mkRate' not in majorFields:
         return  # No parallel marking data in profile
 
     donationsField = majorFields['pmDons']
+    markRateField = majorFields['mkRate']
 
     count = 0
-    results = []
+    donationResults = []
+    markRateResults = []
     donationsTotal = 0
+    logMarkRateTotal = 0
     for record in majorData:
+        markRate = int(record[markRateField])
         donations = int(record[donationsField])
-        if donations == 0:
+
+        # Only reported at the end of GC, otherwise zero.
+        if markRate == 0:
+            assert donations == 0
             continue
 
         count += 1
-        results.append(donations)
+        donationResults.append(donations)
+        markRateResults.append(markRate)
         donationsTotal += donations
+        logMarkRateTotal += math.log(markRate)
 
     if count == 0:
         return
 
-    result['Parallel marking donations'] = results
     result[
         'Parallel marking donations per collection'] = donationsTotal / count
+    result['Geometric mean mark rate'] = math.exp(logMarkRateTotal / count)
 
 # Work out which runtime we're interested in. This is a heuristic that
 # may not always work.
@@ -384,13 +407,13 @@ def findMax(fields, data, key):
     result = 0
 
     for line in data:
-        result = max(result, int(line[i]))
+        result = max(result, float(line[i]))
 
     return result
 
 def calcMedian(fields, data, key):
     field = fields[key]
-    samples = list(map(lambda line: int(line[field]), data))
+    samples = list(map(lambda line: float(line[field]), data))
     count = len(samples)
     if count == 0:
         return 0
