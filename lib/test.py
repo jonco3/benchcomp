@@ -34,3 +34,26 @@ class LocalTest(Test):
 
         dir, name = os.path.split(os.path.abspath(path))
         super().__init__(spec, dir, name, args)
+
+def getKnownTests():
+    return [
+        # Run all tests sequentially in a single runtime.
+        OctaneTest(),
+
+        # Run individual tests independently.
+        OctaneTest('richards'),
+        OctaneTest('deltablue'),
+        OctaneTest('crypto'),
+        OctaneTest('raytrace'),
+        OctaneTest('earley-boyer'),
+        OctaneTest('regexp'),
+        OctaneTest('splay'),
+        OctaneTest('navier-stokes'),
+        OctaneTest('pdfjs'),
+        OctaneTest('mandreel'),
+        OctaneTest('gbemu'),
+        OctaneTest('code-load'),
+        OctaneTest('box2d'),
+        OctaneTest('zlib'),
+        OctaneTest('typescript')
+    ]
