@@ -250,6 +250,10 @@ def summariseAllData(result,
     summariseMajorMinorData(result, majorFields, majorData, minorFields,
                             minorData, categories, keySuffix)
 
+    if 'major' in categories:
+        result['Total budget overrun' + keySuffix] = \
+        calculateBudgetOverrun(majorFields, majorData)
+
     if 'major' in categories and 'size' in categories:
         result['Max GC heap size / KB' + keySuffix] = \
             findMax(majorFields, majorData, 'SizeKB')
@@ -313,6 +317,17 @@ def summariseData(fieldMap, data):
         if time != 0:
             count += 1
     return count, totalTime
+
+def calculateBudgetOverrun(majorFields, majorData):
+    totalField = majorFields['total']
+    budgetField = majorFields['Budget']
+    totalOverrun = 0
+    for record in majorData:
+        total = float(record[totalField])
+        budget = float(record[budgetField])
+        if total > budget:
+            totalOverrun += total - budget
+    return totalOverrun
 
 def summariseParallelMarking(result, majorFields, majorData):
     if 'pmDons' not in majorFields or 'mkRate' not in majorFields:
