@@ -308,13 +308,15 @@ def summariseMajorMinorData(result, majorFields, majorData, minorFields,
     result['Total GC time' + keySuffix] = majorTime + minorTime
 
 def summariseData(fieldMap, data):
+    reasonField = fieldMap['Reason']
+    totalField = fieldMap['total']
     count = 0
     totalTime = 0
     for fields in data:
-        time = float(fields[fieldMap['total']])
+        time = float(fields[totalField])
         totalTime += time
-        # experiment: don't count zero length slices/collections
-        if time != 0:
+        # experiment: skip these very short slices for major GC count
+        if fields[reasonField] != 'BG_TASK_FINISHED':
             count += 1
     return count, totalTime
 
