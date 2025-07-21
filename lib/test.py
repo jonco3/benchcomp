@@ -21,8 +21,8 @@ class OctaneTest(Test):
             script = 'run.js'
         else:
             script = f"run-{name}.js"
-        utils.chdir_to_source_root()
-        dir = "js/src/octane"
+        root = utils.path_to_source_root()
+        dir = os.path.normpath(os.path.join(root, "js/src/octane"))
         super().__init__(name, dir, script)
 
 class LocalTest(Test):
@@ -31,7 +31,6 @@ class LocalTest(Test):
         path = os.path.normpath(os.path.expanduser(path))
         if not os.path.exists(path):
             sys.exit(f"Test '{path}' not found")
-
         dir, name = os.path.split(os.path.abspath(path))
         super().__init__(spec, dir, name, args)
 
