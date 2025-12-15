@@ -286,7 +286,7 @@ def parseOutput(stdout, stderr, args, profilePath):
     results = dict()
 
     for line in stdout.splitlines():
-        match = re.match(r'([\w\s]+):\s+(\d+(:?\.\d+)?)', line)
+        match = re.match(r'([\w\s-]+):\s+(\d+(:?\.\d+)?)', line)
         if match:
             key, value = match.group(1), match.group(2)
             key = '!' + key  # These are displayed first.
