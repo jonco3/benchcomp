@@ -10,7 +10,7 @@ class Build:
     def __init__(self, spec):
         command = spec.split()
         path = os.path.expanduser(os.path.normpath(command[0]))
-        shell = findShellInBuildDir(path)
+        shell = findShellForPath(path)
         ensure(canExecute(shell), f"Shell not executable: {shell}")
         self.spec = spec
         self.path = path
@@ -24,7 +24,10 @@ class Build:
     def __repr__(self):
         return f"Build({self.name})"
 
-def findShellInBuildDir(path):
+def findShellForPath(path):
+    if os.path.isfile(path):
+        return path
+
     locations = [['shell'], ['dist', 'bin', 'js'], ['d8'], ['bin', 'jsc']]
     for location in locations:
         shell = os.path.join(path, *location)
