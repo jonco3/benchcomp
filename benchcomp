@@ -199,10 +199,12 @@ def startTestRunnerThread(eventQueue, args, builds, tests):
     thread.start()
 
 def testRunnerThread(eventQueue, args, builds, tests):
-    for (build, test) in generateTestRuns(args, builds, tests):
-        results = runBenchmark(build, test, args)
-        eventQueue.put(TestResults(build, results))
-    eventQueue.put(None)
+    try:
+        for (build, test) in generateTestRuns(args, builds, tests):
+            results = runBenchmark(build, test, args)
+            eventQueue.put(TestResults(build, results))
+    finally:
+        eventQueue.put(None)  # Exit on exception.
 
 class TestResults:
     def __init__(self, build, results):
@@ -276,13 +278,11 @@ def runBenchmark(build, test, args):
 
         proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
         if proc.returncode != 0:
-            print(
-                f"Error running benchmark {test.name} with shell {build.shell}:"
-            )
+            print(f"Error running benchmark {test.name} with shell {build.shell}:")
             print(' '.join(cmd))
-            print(f"Command exited with return code {proc.returncode}")
+            print(proc.stdout)
             print(proc.stderr)
-            sys.exit(1)
+            raise f"Command exited with return code {proc.returncode}"
         stdout, stderr = proc.stdout, proc.stderr
 
         os.chdir(oldcwd)
@@ -323,9 +323,9 @@ def parseOutput(stdout, stderr, args, profilePath):
 
     if not results:
         print("Failed to parse any result from output:")
-        print(stdout + stderr)
-        # bug: this doesn't cause the main program to exit any more
-        sys.exit(1)
+        print(stdout)
+        print(stderr)
+        raise "Failed to parse output"
 
     return results
 
