@@ -38,6 +38,7 @@ def main():
     args = parseArgs()
     builds = buildsToTest(args)
     tests = testsToRun(args)
+    checkBuildsAndTestsCompatible(builds, tests)
     if args.android:
         android.init(builds, tests, args)
     runTests(args, builds, tests)
@@ -82,6 +83,9 @@ def parseArgs():
     parser.add_argument('--android',
                         action='store_true',
                         help='Run benchmarks on connected Android device')
+    parser.add_argument('--debug',
+                        action='store_true',
+                        help='Print debugging information such as subprocess output')
     parser.add_argument('builds', nargs="+")
     args = parser.parse_args()
     if not args.summary:
@@ -130,6 +134,17 @@ def testsToRun(args):
         return tests
 
     return [LocalTest(args.test)]
+
+def checkBuildsAndTestsCompatible(builds, tests):
+    for build in builds:
+        for test in tests:
+            if test.kind == 'shell':
+                if not build.hasShell():
+                    sys.exit(f"Build {build} doesn't have a shell for test {test}")
+            else:
+                assert test.kind == 'browser'
+                if not build.hasBrowser():
+                    sys.exit(f"Build {build} doesn't have a browser for test {test}")
 
 def runTests(args, builds, tests):
     # Nested map of lists keyed by result key then by build.
@@ -199,12 +214,15 @@ def startTestRunnerThread(eventQueue, args, builds, tests):
     thread.start()
 
 def testRunnerThread(eventQueue, args, builds, tests):
-    try:
+    #try:
         for (build, test) in generateTestRuns(args, builds, tests):
             results = runBenchmark(build, test, args)
             eventQueue.put(TestResults(build, results))
-    finally:
-        eventQueue.put(None)  # Exit on exception.
+    #except e:
+    #    print(f"Caught {e}")
+    #    raise e
+    #finally:
+    #    eventQueue.put(None)  # Exit on exception.
 
 class TestResults:
     def __init__(self, build, results):
@@ -241,8 +259,16 @@ def shuffled(list):
     return result
 
 def runBenchmark(build, test, args):
-    cmd = [build.shell] + build.args + [test.script] + test.args
     env = dict()
+    if test.isShellTest():
+        cmd = [build.shell] + build.args + [test.script] + test.args
+        dir = test.dir
+    else:
+        env['MOZCONFIG'] = build.browserConfig
+        env['MOZ_AVOID_JJ_VCS'] = '1'
+        env['PATH'] = os.environ['PATH']
+        cmd = ['./mach'] + test.args
+        dir = os.path.join(build.path, '..')  # todo: get top src dir from info
 
     profilePath = None
     if args.gc_profile:
@@ -272,38 +298,43 @@ def runBenchmark(build, test, args):
 
     if args.android:
         stdout, stderr = android.runRemote(build, test.dir, cmd, env)
+        output = f"{stdout}\n{stderr}"
     else:
-        oldcwd = os.getcwd()
-        os.chdir(test.dir)
+        if args.debug:
+            print(f"Running {cmd}...")
 
-        proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
-        if proc.returncode != 0:
+        proc = subprocess.Popen(cmd, env=env, cwd=dir, shell=False, text=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        lines = []
+        results = dict()
+        for line in proc.stdout:
+            # TODO: Could parse output incrementally / terminate command early.
+            line = line.rstrip()
+            if args.debug:
+                print(f"> {line}")
+            lines.append(line)
+
+            if test.isShellTest():
+                done = parseShellOutput(results, line, args, profilePath)
+            else:
+                done = parseBrowserOutput(results, line, args, profilePath)
+
+            if done:
+                break
+
+        output = "\n".join(lines)
+        returncode = proc.poll()
+        if returncode is None:
+            if args.debug:
+                print("Terminating subprocess now we have results")
+            proc.terminate()
+            proc.wait()
+        elif returncode != 0:
             print(f"Error running benchmark {test.name} with shell {build.shell}:")
             print(' '.join(cmd))
-            print(proc.stdout)
-            print(proc.stderr)
+            print(proc.output)
             raise f"Command exited with return code {proc.returncode}"
-        stdout, stderr = proc.stdout, proc.stderr
-
-        os.chdir(oldcwd)
-
-    return parseOutput(stdout, stderr, args, profilePath)
-
-def parseOutput(stdout, stderr, args, profilePath):
-    results = dict()
-
-    for line in stdout.splitlines():
-        match = re.match(r'([\w\s-]+):\s+(\d+(:?\.\d+)?)', line)
-        if match:
-            key, value = match.group(1), match.group(2)
-            key = '!' + key  # These are displayed first.
-            value = float(value)
-            if key not in results:
-                results[key] = []
-            results[key].append(value)
-
-    # if args.android:
-    #     results["Max CPU frequency"] = android.getMaxCpuFrequency()
 
     if args.gc_profile:
         assert profilePath
@@ -323,11 +354,45 @@ def parseOutput(stdout, stderr, args, profilePath):
 
     if not results:
         print("Failed to parse any result from output:")
-        print(stdout)
-        print(stderr)
+        print(output)
         raise "Failed to parse output"
 
     return results
+
+def parseShellOutput(results, line, args, profilePath):
+    match = re.match(r'([\w\s-]+):\s+(\d+(:?\.\d+)?)', line)
+    if match:
+        key, value = match.group(1), match.group(2)
+        key = '!' + key  # These are displayed first.
+        value = float(value)
+        if key not in results:
+            results[key] = []
+        results[key].append(value)
+    return False
+
+PerfherderDataTag = 'PERFHERDER_DATA:'
+
+def parseBrowserOutput(results, line, args, profilePath):
+    if PerfherderDataTag not in line:
+        return False
+
+    data = json.loads(line.split(PerfherderDataTag)[1].strip())
+    try:
+        subtests = data['suites'][0]['subtests']
+    except:
+        print("Exception parsing perfherder data:")
+        print(json.dumps(data, sort_keys=True, indent=4))
+        raise
+
+    for testData in subtests:
+        key = testData['name']
+        key = '!' + key  # These are displayed first.
+        values = list(map(float, testData['replicates']))
+        if key not in results:
+            results[key] = []
+        results[key].extend(values)
+
+    return True
 
 def parseSysUsage(results, text):
     for line in text.splitlines():
