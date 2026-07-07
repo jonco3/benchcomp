@@ -57,6 +57,8 @@ def parseArgs():
                         const='histogram')
     parser.add_argument('--show-samples', dest='summary', action='store_const',
                         const='samples')
+    parser.add_argument('--compact-layout', dest='layout', action='store_const',
+                        const='compact', default='default')
     parser.add_argument('-c', '--compare', choices=CompareKeys, default='mean')
     parser.add_argument('--gc-profile', const='major,minor,size,reason', nargs='?')
     parser.add_argument('--sys-usage', action='store_true')
@@ -203,6 +205,14 @@ def handleKeyPress(args, key):
         else:
             assert args.summary == 'samples'
             args.summary = 'range'
+
+    # l: cycle through layout settings
+    if key == 'l':
+        if args.layout == 'default':
+            args.layout = 'compact'
+        else:
+            assert args.layout == 'compact'
+            args.layout = 'default'
 
     # Ignore unknown.
     return True
@@ -490,9 +500,10 @@ def displayResults(out, builds, results, args):
         if not statsForBuild or (low == high and not isResultKey):
             continue
 
-        if not args.csv:
+        if not args.csv and args.layout == 'default':
             out.print(f"{keyName}:")
 
+        firstBuild = True
         for build in statsForBuild.keys():
             stats = statsForBuild[build]
             comp = compareStats(stats, compareTo, args.compare)
@@ -509,8 +520,14 @@ def displayResults(out, builds, results, args):
 
             if args.csv:
                 out.print("%s, %s, %s" % (keyName, build.spec, text))
-            else:
+            elif args.layout == 'default':
                 out.print("  %20s  %s" % (build.spec[-20:], text))
+            else:
+                assert args.layout == 'compact'
+                name = keyName if firstBuild else ''
+                out.print("  %32s  %20s  %s" % (name[-32:], build.spec[-20:], text))
+
+            firstBuild = False
 
     if args.geomean and not args.csv:
         out.print()
@@ -532,10 +549,11 @@ def displayResults(out, builds, results, args):
                 out.print("  %20s  %s" % (build.spec[-20:], text))
 
 def printHeader(out, args):
-    header = (24 * " ") + statsHeader(args)
-    width = len(header)
+    header = statsHeader(args)
+    if args.layout == 'compact':
+        header = ("%-32s  " % "Result") + header
     out.print(header)
-    out.print(width * "=")
+    out.print(len(header) * "=")
 
 def writeResultsToFile(builds, results, args):
     data = []

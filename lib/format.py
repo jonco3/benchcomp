@@ -5,8 +5,8 @@
 import math
 import sys
 
-ColumnNames = ("Min", "Mean", "Median", "Max", "CofV", "Runs", "Change*",
-               "P-value")
+ColumnNames = ("Build", "Min", "Mean", "Median", "Max", "CofV", "Runs",
+               "Change*", "P-value")
 
 def statsHeader(args):
     key = args.compare
@@ -15,7 +15,7 @@ def statsHeader(args):
 
     columns.append(args.summary.capitalize())
 
-    return "%-8s  %-8s  %-8s  %-8s  %-6s  %-6s  %-7s  %-7s  %-40s" % tuple(columns)
+    return "  %-20s  %-8s  %-8s  %-8s  %-8s  %-6s  %-6s  %-7s  %-7s  %-40s" % tuple(columns)
 
 def formatFloat(width, x):
     # General purpose number format that fits the most significant
