@@ -49,9 +49,9 @@ class LocalTest(ShellTest):
         super().__init__(spec, dir, name, args)
 
 class RaptorTest(BrowserTest):
-    def __init__(self, name):
+    def __init__(self, name, testName=None):
         args = 'raptor --browsertime -t'.split()
-        args.append(name)
+        args.append(testName if testName else name)
         args.extend('--post-startup-delay 1000 --browser-cycles 1 --page-cycles 1'.split())
         super().__init__(name, args)
 
@@ -78,5 +78,10 @@ def getKnownTests():
         OctaneTest('typescript'),
 
         # Browser tests
-        RaptorTest('speedometer3')
+        RaptorTest('speedometer3'),
+        RaptorTest('ares6'),
+        RaptorTest('jetstream2'),
+        RaptorTest('jetstream3', 'jetstream3-desktop'),
+        RaptorTest('matrix-react-bench'),
+        RaptorTest('speedometer', 'speedometer-desktop')
     ]
