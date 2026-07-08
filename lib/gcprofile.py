@@ -21,10 +21,8 @@ def summariseProfile(text, result, categories, filterMostActiveRuntime=True):
 
     removeShutdownGCs(majorFields, majorData, minorFields, minorData)
 
-    if 'major' in categories:
-        countMajorGCs(result, majorFields, majorData)
-
-    summariseAllData(result, majorFields, majorData, minorFields, minorData, categories)
+    summariseAllData(result, majorFields, majorData, minorFields, minorData,
+                     categories)
     if testCount != 0:
         summariseAllDataByInTest(result, majorFields, majorData, minorFields,
                                  minorData, categories, True)
@@ -94,6 +92,30 @@ def countMajorGCs(result, majorFields, majorData):
             count += 1
 
     result['Major GC count'] = count
+
+def summariseIncrementalGCDuration(majorFields, majorData):
+    statesField = majorFields.get('States')
+    reasonField = majorFields.get('Reason')
+    timestampField = majorFields.get('Timestamp')
+
+    count = 0
+    totalTime = 0.0
+    inGC = False
+    startTime = None
+    for line in majorData:
+        if "0 ->" in line[statesField]:
+            assert not inGC
+            inGC = True
+            startTime = float(line[timestampField])
+        if "-> 0" in line[statesField]:
+            assert inGC
+            count += 1
+            duration = float(line[timestampField]) - startTime
+            totalTime += duration
+            inGC = False
+            startTime = None
+
+    return count, totalTime * 1000
 
 def extractHeapSizeData(text):
     majorFields, majorData, _, _, _ = parseOutput(text)
@@ -294,10 +316,18 @@ def summariseMajorMinorData(result, majorFields, majorData, minorFields,
     totalTime = majorTime + minorTime
 
     if 'major' in categories:
-        result['Major GC slices' + keySuffix] = majorCount
+        incrementalCount, incrementalTime = \
+            summariseIncrementalGCDuration(majorFields, majorData)
+        if incrementalCount:
+            result['Major GC cycle count'] = incrementalCount
+            result['Mean major GC cycle duration'] = \
+                incrementalTime / incrementalCount
+
+        result['Major GC slice count' + keySuffix] = majorCount
         result['Major GC time' + keySuffix] = majorTime
         if majorCount:
             result['Mean major GC slice time'] = majorTime / majorCount
+
 
     if 'minor' in categories:
         result['Minor GC count' + keySuffix] = minorCount
