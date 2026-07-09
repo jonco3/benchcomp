@@ -14,6 +14,9 @@ def summariseProfile(text, result, categories, filterMostActiveRuntime=True):
     majorFields, majorData, minorFields, minorData, testCount = parseOutput(
         text)
 
+    if len(minorData) == 0 and len(majorData) == 0:
+        return  # No data.
+
     if filterMostActiveRuntime:
         runtime = findMostActiveRuntimeByFrequency(majorData + minorData)
         majorData = filterByRuntime(majorData, runtime)
@@ -23,9 +26,10 @@ def summariseProfile(text, result, categories, filterMostActiveRuntime=True):
 
     summariseAllData(result, majorFields, majorData, minorFields, minorData,
                      categories)
-    if testCount != 0:
-        summariseAllDataByInTest(result, majorFields, majorData, minorFields,
-                                 minorData, categories, True)
+
+    #if testCount != 0:
+    #    summariseAllDataByInTest(result, majorFields, majorData, minorFields,
+    #                             minorData, categories, True)
 
     if 'major' in categories:
         # Useful for scheduling changes only.
@@ -109,10 +113,10 @@ def summariseIncrementalGCDuration(majorFields, majorData):
             startTime = float(line[timestampField])
         if "-> 0" in line[statesField]:
             assert inGC
+            inGC = False
             count += 1
             duration = float(line[timestampField]) - startTime
             totalTime += duration
-            inGC = False
             startTime = None
 
     return count, totalTime * 1000
@@ -219,9 +223,6 @@ def parseOutput(text):
 
             minorData.append(fields)
             continue
-
-    assert len(minorData) != 0 or len(
-        majorData) != 0, "No profile data present"
 
     return majorFields, majorData, minorFields, minorData, testCount
 
