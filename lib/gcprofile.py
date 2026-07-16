@@ -251,6 +251,11 @@ def splitWithSpans(line, spans):
         field = line[span[0]:span[1]].strip()
         fields.append(field)
 
+    # Fix up broken printing of runtime address
+    match = re.match(r"0x\s+([\w\d]+)", fields[1])
+    if match:
+        fields[1] = "0x" + match.group(1)
+
     return fields
 
 def summariseAllDataByInTest(result, majorFields, majorData, minorFields,
