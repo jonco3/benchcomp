@@ -153,37 +153,40 @@ def runTests(args, builds, tests):
     # Nested map of lists keyed by result key then by build.
     results = dict()
 
-    out = None
+    terminalOut = None
+    fileOut = None
     if sys.stdout.isatty():
-        out = display.Terminal()
+        terminalOut = display.Terminal()
+    if args.output:
+        file = open(args.output, "w")
+        fileOut = display.File(file)
 
-    with KeyGetter() as keyGetter:
-        eventQueue = queue.Queue()
-        if sys.stdout.isatty():
-            startKeyboardInputThread(eventQueue, keyGetter)
-        startTestRunnerThread(eventQueue, args, builds, tests)
+    try:
+        with KeyGetter() as keyGetter:
+            eventQueue = queue.Queue()
+            if sys.stdout.isatty():
+                startKeyboardInputThread(eventQueue, keyGetter)
+            startTestRunnerThread(eventQueue, args, builds, tests)
 
-        while True:
-            event = eventQueue.get()
-            if event is None:
-                break  # Finished.
-            elif isinstance(event, TestResults):
-                addResults(builds, results, event.build, event.results)
-            else:
-                assert isinstance(event, KeyPress)
-                if not handleKeyPress(args, event.key):
-                    break  # Quit
+            while True:
+                event = eventQueue.get()
+                if event is None:
+                    break  # Finished.
+                elif isinstance(event, TestResults):
+                    addResults(builds, results, event.build, event.results)
+                else:
+                    assert isinstance(event, KeyPress)
+                    if not handleKeyPress(args, event.key):
+                        break  # Quit
 
-            if out:
                 with DelayedKeyboardInterrupt():
-                    displayResults(out, builds, results, args)
-
-    with DelayedKeyboardInterrupt():
-        if args.output:
-            writeResultsToFile(builds, results, args)
-        if not out:
-            out = display.File(sys.stdout)
-            displayResults(out, builds, results, args)
+                    if terminalOut:
+                        displayResults(terminalOut, builds, results, args)
+                    if fileOut:
+                        displayResults(fileOut, builds, results, args)
+    finally:
+        if file:
+            file.close()
 
 def handleKeyPress(args, key):
     # q: quit.

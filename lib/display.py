@@ -39,4 +39,5 @@ class File:
         self.file.write(text + "\n")
 
     def clear(self):
-        pass
+        self.file.seek(0)
+
