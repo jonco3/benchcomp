@@ -362,7 +362,7 @@ def runBenchmark(build, test, args):
         if args.debug:
             print("GC profile data:")
             print(profileData)
-        gcprofile.summariseProfile(profileData, results, args.gc_profile, False)
+        gcprofile.summariseProfile(profileData, results, args.gc_profile, True)
 
     if args.sys_usage:
         parseSysUsage(results, lines[-30:])
