@@ -335,7 +335,7 @@ def runBenchmark(build, test, args):
             else:
                 done = parseBrowserOutput(results, line, args)
 
-            if done:
+            if done and not args.sys_usage:
                 break
 
         output = "\n".join(lines)
@@ -348,7 +348,7 @@ def runBenchmark(build, test, args):
         elif returncode != 0:
             print(f"Error running benchmark {test.name} with shell {build.shell}:")
             print(' '.join(cmd))
-            print(proc.output)
+            print(output)
             raise f"Command exited with return code {proc.returncode}"
 
     if args.gc_profile:
@@ -365,7 +365,7 @@ def runBenchmark(build, test, args):
         gcprofile.summariseProfile(profileData, results, args.gc_profile, False)
 
     if args.sys_usage:
-        parseSysUsage(results, stderr)
+        parseSysUsage(results, lines[-30:])
 
     if args.perf:
         parsePerfOutput(results, stdout, stderr, args)
@@ -412,25 +412,25 @@ def parseBrowserOutput(results, line, args):
 
     return True
 
-def parseSysUsage(results, text):
-    for line in text.splitlines():
-        line = line.strip()
+def parseSysUsage(results, lines):
+    for line in lines:
         if line == "":
             continue
 
         if platform.system() == "Darwin":
             parts = line.split()
-            if parts[1] == "real" and parts[3] == "user" and parts[5] == "sys":
+            if len(parts) == 6 and parts[1] == "real" and parts[3] == "user" and parts[5] == "sys":
                 addSysUsageResult(results, "Real time", parts[0])
                 addSysUsageResult(results, "User time", parts[2])
                 addSysUsageResult(results, "System time", parts[4])
-                continue
-            value = parts[0]
-            key = " ".join(parts[1:])
+            else:
+                match = re.match(r"\s+(\d+)\s+([\w\s]+)", line)
+                if match:
+                    addSysUsageResult(results, match.group(2), match.group(1))
         else:
-            key, value = line.split(": ")
-
-        addSysUsageResult(results, key, value)
+            match = re.match(r"\s+([^:]+):\s+(\d+)", line)
+            if match:
+                addSysUsageResult(results, match.group(2), match.group(1))
 
 def addSysUsageResult(results, key, value):
     if value.endswith("%"):
@@ -509,7 +509,7 @@ def displayResults(out, builds, results, args):
             else:
                 low, high = min(low, stats.min), max(high, stats.max)
 
-        if not statsForBuild:
+        if not statsForBuild or (low == 0 and high == 0):
             continue
 
         if not args.csv and args.layout == 'default':
@@ -537,7 +537,7 @@ def displayResults(out, builds, results, args):
             else:
                 assert args.layout == 'compact'
                 name = keyName if firstBuild else ''
-                out.print("  %32s  %20s  %s" % (name[-32:], build.spec[-20:], text))
+                out.print("  %40s  %20s  %s" % (name[-40:], build.spec[-20:], text))
 
             firstBuild = False
 
@@ -563,7 +563,7 @@ def displayResults(out, builds, results, args):
 def printHeader(out, args):
     header = statsHeader(args)
     if args.layout == 'compact':
-        header = ("%-32s  " % "Result") + header
+        header = ("%-40s  " % "Result") + header
     out.print(header)
     out.print(len(header) * "=")
 
