@@ -39,6 +39,15 @@ class OctaneTest(ShellTest):
         dir = os.path.normpath(os.path.join(root, "js/src/octane"))
         super().__init__(name, dir, script)
 
+class SunspiderTest(ShellTest):
+    def __init__(self):
+        name = 'sunspider'
+        script = 'sunspider-standalone-driver.js'
+        root = utils.path_to_source_root()
+        dir = 'third_party/webkit/PerformanceTests/SunSpider/sunspider-0.9.1'
+        dir = os.path.normpath(os.path.join(root, dir))
+        super().__init__(name, dir, script)
+
 class LocalTest(ShellTest):
     def __init__(self, spec):
         path, *args = spec.split(" ")
@@ -57,10 +66,10 @@ class RaptorTest(BrowserTest):
 
 def getKnownTests():
     return [
-        # Run all tests sequentially in a single runtime.
+        # Run all octane tests sequentially in a single runtime.
         OctaneTest(),
 
-        # Run individual tests independently.
+        # Run octane individual tests independently.
         OctaneTest('richards'),
         OctaneTest('deltablue'),
         OctaneTest('crypto'),
@@ -76,6 +85,9 @@ def getKnownTests():
         OctaneTest('box2d'),
         OctaneTest('zlib'),
         OctaneTest('typescript'),
+
+        # Run all sunspider tests.
+        SunspiderTest(),
 
         # Browser tests
         RaptorTest('speedometer3'),
