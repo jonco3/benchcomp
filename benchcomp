@@ -185,8 +185,8 @@ def runTests(args, builds, tests):
                     if fileOut:
                         displayResults(fileOut, builds, results, args)
     finally:
-        if file:
-            file.close()
+        if fileOut:
+            fileOut.close()
 
 def handleKeyPress(args, key):
     # q: quit.
@@ -232,15 +232,15 @@ def startTestRunnerThread(eventQueue, args, builds, tests):
     thread.start()
 
 def testRunnerThread(eventQueue, args, builds, tests):
-    #try:
+    try:
         for (build, test) in generateTestRuns(args, builds, tests):
             results = runBenchmark(build, test, args)
             eventQueue.put(TestResults(build, results))
-    #except e:
-    #    print(f"Caught {e}")
-    #    raise e
-    #finally:
-    #    eventQueue.put(None)  # Exit on exception.
+    except e:
+        print(f"Caught {e}")
+        raise e
+    finally:
+        eventQueue.put(None)  # Exit on exception.
 
 class TestResults:
     def __init__(self, build, results):

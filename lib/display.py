@@ -31,6 +31,9 @@ class Terminal:
         (self.width, self.height) = shutil.get_terminal_size()
         self.linesDisplayed = 0
 
+    def close(self):
+        pass
+
 class File:
     def __init__(self, file):
         self.file = file
@@ -40,4 +43,7 @@ class File:
 
     def clear(self):
         self.file.seek(0)
+
+    def close(self):
+        self.file.close()
 
