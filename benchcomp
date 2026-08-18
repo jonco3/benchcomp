@@ -92,7 +92,7 @@ def parseArgs():
     parser.add_argument('builds', nargs="+")
     args = parser.parse_args()
     if not args.summary:
-        args.summary = 'range'
+        args.summary = 'histogram'
     return args
 
 def buildsToTest(args):
