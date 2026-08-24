@@ -4,6 +4,7 @@
 
 import math
 import re
+import statistics
 
 # Detect whether we're currently running a raptor test, or between
 # tests.
@@ -26,6 +27,8 @@ def summariseProfile(text, result, categories, filterMostActiveRuntime=True):
 
     summariseAllData(result, majorFields, majorData, minorFields, minorData,
                      categories)
+
+    summariseBufferAllocatorData(result, majorFields, majorData)
 
     #if testCount != 0:
     #    summariseAllDataByInTest(result, majorFields, majorData, minorFields,
@@ -400,6 +403,32 @@ def summariseParallelMarking(result, majorFields, majorData):
     result[
         'Parallel marking donations per collection'] = donationsTotal / count
     result['Geometric mean mark rate'] = math.exp(logMarkRateTotal / count)
+
+
+def summariseBufferAllocatorData(result, majorFields, majorData):
+    if 'BuffKB' not in majorFields or 'BuffDns' not in majorFields or \
+       'BuffMC' not in majorFields:
+        return
+
+    statesField = majorFields.get('States')
+    buffKBField = majorFields['BuffKB']
+    buffDnsField = majorFields['BuffDns']
+    buffMCField = majorFields['BuffMC']
+
+    sizeKBValues = []
+    densityValues = []
+    minorSweepCounts = []
+    for record in majorData:
+        if "-> 0" in record[statesField]:
+            sizeKBValues.append(int(record[buffKBField]))
+            densityValues.append(float(record[buffDnsField][:-1]))
+            minorSweepCounts.append(int(record[buffMCField]))
+
+    if sizeKBValues:
+        result['Max buffer heap size / KB'] = max(sizeKBValues)
+        result['Median buffer heap size / KB'] = statistics.median(sizeKBValues)
+        result['Median buffer heap density %'] = statistics.median(densityValues)
+        result['Median buffer chunks minor swept'] = statistics.median(minorSweepCounts)
 
 # Work out which runtime we're interested in. This is a heuristic that
 # may not always work.
