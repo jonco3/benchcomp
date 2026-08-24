@@ -228,7 +228,7 @@ def handleKeyPress(args, key):
 def startTestRunnerThread(eventQueue, args, builds, tests):
     thread = threading.Thread(target=testRunnerThread,
                               args=(eventQueue, args, builds, tests),
-                              daemon=True)
+                              daemon=False)
     thread.start()
 
 def testRunnerThread(eventQueue, args, builds, tests):
@@ -236,9 +236,10 @@ def testRunnerThread(eventQueue, args, builds, tests):
         for (build, test) in generateTestRuns(args, builds, tests):
             results = runBenchmark(build, test, args)
             eventQueue.put(TestResults(build, results))
-    except e:
+    except Exception as e:
         print(f"Caught {e}")
-        raise e
+        sys.stdout.flush()
+        raise
     finally:
         eventQueue.put(None)  # Exit on exception.
 
@@ -258,6 +259,10 @@ def keyboardInputThread(eventQueue, keyGetter):
         while True:
             key = keyGetter.get()
             eventQueue.put(KeyPress(key))
+    except Exception as e:
+        print(f"Caught {e}")
+        sys.stdout.flush()
+        raise
     finally:
         eventQueue.put(None)  # Exit on exception.
 
@@ -403,6 +408,7 @@ def parseBrowserOutput(results, line, args):
     except:
         print("Exception parsing perfherder data:")
         print(json.dumps(data, sort_keys=True, indent=4))
+        sys.stdout.flush()
         raise
 
     for testData in subtests:
