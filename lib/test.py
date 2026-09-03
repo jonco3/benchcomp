@@ -48,6 +48,15 @@ class SunspiderTest(ShellTest):
         dir = os.path.normpath(os.path.join(root, dir))
         super().__init__(name, dir, script)
 
+class SixSpeedTest(ShellTest):
+    def __init__(self):
+        name = 'six-speed'
+        script = 'test.js'
+        root = utils.path_to_source_root()
+        dir = 'third_party/webkit/PerformanceTests/six-speed'
+        dir = os.path.normpath(os.path.join(root, dir))
+        super().__init__(name, dir, script)
+
 class LocalTest(ShellTest):
     def __init__(self, spec):
         path, *args = spec.split(" ")
@@ -88,6 +97,8 @@ def getKnownTests():
 
         # Run all sunspider tests.
         SunspiderTest(),
+
+        SixSpeedTest(),
 
         # Browser tests
         RaptorTest('speedometer3'),

@@ -357,7 +357,7 @@ def runBenchmark(build, test, args):
             print(f"Error running benchmark {test.name} with shell {build.shell}:")
             print(' '.join(cmd))
             print(output)
-            raise f"Command exited with return code {proc.returncode}"
+            raise Exception(f"Command exited with return code {proc.returncode}")
 
     if args.gc_profile:
         assert profilePath
@@ -381,7 +381,7 @@ def runBenchmark(build, test, args):
     if not results:
         print("Failed to parse any result from output:")
         print(output)
-        raise "Failed to parse output"
+        raise Exception("Failed to parse output")
 
     return results
 
