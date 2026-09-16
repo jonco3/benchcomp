@@ -365,9 +365,10 @@ def calculateBudgetOverrun(majorFields, majorData):
     totalOverrun = 0
     for record in majorData:
         total = float(record[totalField])
-        budget = float(record[budgetField])
-        if total > budget:
-            totalOverrun += total - budget
+        if record[budgetField]:
+            budget = float(record[budgetField])
+            if total > budget:
+                totalOverrun += total - budget
     return totalOverrun
 
 def summariseParallelMarking(result, majorFields, majorData):
@@ -406,29 +407,24 @@ def summariseParallelMarking(result, majorFields, majorData):
 
 
 def summariseBufferAllocatorData(result, majorFields, majorData):
-    if 'BuffKB' not in majorFields or 'BuffDns' not in majorFields or \
-       'BuffMC' not in majorFields:
+    if 'BuffKB' not in majorFields or 'BuffDns' not in majorFields:
         return
 
     statesField = majorFields.get('States')
     buffKBField = majorFields['BuffKB']
     buffDnsField = majorFields['BuffDns']
-    buffMCField = majorFields['BuffMC']
 
     sizeKBValues = []
     densityValues = []
-    minorSweepCounts = []
     for record in majorData:
         if "-> 0" in record[statesField]:
             sizeKBValues.append(int(record[buffKBField]))
             densityValues.append(float(record[buffDnsField][:-1]))
-            minorSweepCounts.append(int(record[buffMCField]))
 
     if sizeKBValues:
         result['Max buffer heap size / KB'] = max(sizeKBValues)
         result['Median buffer heap size / KB'] = statistics.median(sizeKBValues)
         result['Median buffer heap density %'] = statistics.median(densityValues)
-        result['Median buffer chunks minor swept'] = statistics.median(minorSweepCounts)
 
 # Work out which runtime we're interested in. This is a heuristic that
 # may not always work.
