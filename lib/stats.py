@@ -49,5 +49,7 @@ def compareStats(a, b, key='mean'):
                                 b.samples,
                                 equal_var=False,
                                 trim=0.2).pvalue
+            if math.isnan(p):
+                p = None
 
     return Comparison(diff, factor, p)
