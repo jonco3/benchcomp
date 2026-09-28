@@ -43,6 +43,7 @@ class File:
 
     def clear(self):
         self.file.seek(0)
+        self.file.truncate(0)
 
     def close(self):
         self.file.close()
