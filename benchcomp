@@ -38,7 +38,7 @@ def main():
     args = parseArgs()
     builds = buildsToTest(args)
     tests = testsToRun(args)
-    checkBuildsAndTestsCompatible(builds, tests)
+    checkBuildsAndTestsCompatible(builds, tests, args)
     if args.android:
         android.init(builds, tests, args)
     runTests(args, builds, tests)
@@ -81,6 +81,9 @@ def parseArgs():
     parser.add_argument('--repeat-with-gc-params',
                         default='',
                         help='Run a single build with different GC params')
+    parser.add_argument('--repeat-with-prefs',
+                        default='',
+                        help='Run a single build with different prefs')
     parser.add_argument('--csv',
                         action='store_true',
                         help='Produce output in CSV format')
@@ -125,6 +128,23 @@ def buildsToTest(args):
                 newBuilds.append(b)
         builds = newBuilds
 
+    # Repeat builds for different pref values if specified.
+    if args.repeat_with_prefs:
+        opts = args.repeat_with_prefs.split('=')
+        assert len(opts) == 2
+        param, values = opts
+        values = values.split(',')
+        newBuilds = []
+        for build in builds:
+            for value in values:
+                b = copy.deepcopy(build)
+                b.args.append('--setpref')
+                arg = f"{param}={value}"
+                b.args.append(arg)
+                b.spec += " " + arg
+                newBuilds.append(b)
+        builds = newBuilds
+
     return builds
 
 def testsToRun(args):
@@ -139,16 +159,20 @@ def testsToRun(args):
 
     return [LocalTest(args.test)]
 
-def checkBuildsAndTestsCompatible(builds, tests):
+def checkBuildsAndTestsCompatible(builds, tests, args):
     for build in builds:
         for test in tests:
             if test.kind == 'shell':
                 if not build.hasShell():
                     sys.exit(f"Build {build} doesn't have a shell for test {test}")
+                if args.repeat_with_prefs:
+                    sys.exit(f"--repeat-with-prefs browser option specified for shell test")
             else:
                 assert test.kind == 'browser'
                 if not build.hasBrowser():
                     sys.exit(f"Build {build} doesn't have a browser for test {test}")
+                if args.repeat_with_gc_params:
+                    sys.exit(f"--repeat-with-gc-params shell option specified for browser test")
 
 def runTests(args, builds, tests):
     # Nested map of lists keyed by result key then by build.
@@ -295,8 +319,10 @@ def runBenchmark(build, test, args):
         env['MOZCONFIG'] = build.browserConfig
         env['MOZ_AVOID_JJ_VCS'] = '1'
         env['PATH'] = os.environ['PATH']
-        cmd = ['./mach'] + test.args
+        env['MOZ_REMOTE_ALLOW_SYSTEM_ACCESS'] = '1'
+        cmd = ['./mach', 'raptor', '--browsertime'] + build.args + test.args
         dir = os.path.join(build.path, '..')  # todo: get top src dir from info
+        print(" ".join(cmd))
 
     profilePath = None
     if args.gc_profile:

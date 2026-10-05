@@ -68,8 +68,7 @@ class LocalTest(ShellTest):
 
 class RaptorTest(BrowserTest):
     def __init__(self, name, testName=None):
-        args = 'raptor --browsertime -t'.split()
-        args.append(testName if testName else name)
+        args = ['-t', testName if testName else name]
         args.extend('--post-startup-delay 1000 --browser-cycles 1 --page-cycles 1'.split())
         super().__init__(name, args)
 
