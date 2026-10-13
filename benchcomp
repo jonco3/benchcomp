@@ -13,10 +13,9 @@ import random
 import re
 import subprocess
 import sys
-import threading
 import time
 import tempfile
-import queue
+import threading
 
 LibDir = os.path.join(os.path.dirname(__file__), 'lib')
 sys.path.insert(0, LibDir)
@@ -27,10 +26,8 @@ from format import *
 from perf import *
 from stats import *
 from test import *
-from utils import DelayedKeyboardInterrupt
-import display
 import gcprofile
-from getch import KeyGetter
+from app import BenchApp
 
 CompareKeys = ['min', 'mean', 'median', 'max', 'cofv']
 
@@ -178,46 +175,58 @@ def runTests(args, builds, tests):
     # Nested map of lists keyed by result key then by build.
     results = dict()
 
-    terminalOut = None
-    fileOut = None
+    if sys.stdout.isatty() and not args.debug:
+        runInteractive(args, builds, tests, results)
+    else:
+        runNonInteractive(args, builds, tests, results)
+
+def runInteractive(args, builds, tests, results):
+    stop = threading.Event()
+
+    def work(report):
+        for (build, test) in generateTestRuns(args, builds, tests):
+            if stop.is_set():
+                break
+            report(build, runBenchmark(build, test, args))
+
+    def onQuit():
+        stop.set()
+        proc = activeProc
+        if proc and proc.poll() is None:
+            proc.terminate()
+
+    def onResults(build, newResults):
+        addResults(builds, results, build, newResults)
+        lines = displayResults(builds, results, args)
+        if args.output:
+            writeLines(args.output, lines)
+        return lines
+
+    app = BenchApp(args, work, onResults,
+                   lambda: displayResults(builds, results, args), handleKeyPress,
+                   onQuit)
+    app.run()
+
+    # The app clears the screen on exit so print the final state.
+    print("\n".join(displayResults(builds, results, args)))
+    if app.error:
+        sys.exit(app.error)
+
+def runNonInteractive(args, builds, tests, results):
+    for (build, test) in generateTestRuns(args, builds, tests):
+        addResults(builds, results, build, runBenchmark(build, test, args))
+        if args.output:
+            writeLines(args.output, displayResults(builds, results, args))
+
+    # Interactive display is disabled with --debug, so show the results here.
     if sys.stdout.isatty():
-        terminalOut = display.Terminal()
-    if args.output:
-        file = open(args.output, "w")
-        fileOut = display.File(file)
+        print("\n".join(displayResults(builds, results, args)))
 
-    try:
-        with KeyGetter() as keyGetter:
-            eventQueue = queue.Queue()
-            if sys.stdout.isatty():
-                startKeyboardInputThread(eventQueue, keyGetter)
-            startTestRunnerThread(eventQueue, args, builds, tests)
-
-            while True:
-                event = eventQueue.get()
-                if event is None:
-                    break  # Finished.
-                elif isinstance(event, TestResults):
-                    addResults(builds, results, event.build, event.results)
-                else:
-                    assert isinstance(event, KeyPress)
-                    if not handleKeyPress(args, event.key):
-                        break  # Quit
-
-                with DelayedKeyboardInterrupt():
-                    if terminalOut:
-                        displayResults(terminalOut, builds, results, args)
-                    if fileOut:
-                        displayResults(fileOut, builds, results, args)
-    finally:
-        if fileOut:
-            fileOut.close()
+def writeLines(path, lines):
+    with open(path, "w") as f:
+        f.write("\n".join(lines) + "\n")
 
 def handleKeyPress(args, key):
-    # q: quit.
-    if key == 'q':
-        return False
-
     # c: cycle through comparision keys.
     if key.lower() == 'c':
         i = CompareKeys.index(args.compare)
@@ -251,54 +260,6 @@ def handleKeyPress(args, key):
     if key == 'f':
         args.significant_only = not args.significant_only
 
-    # Ignore unknown.
-    return True
-
-def startTestRunnerThread(eventQueue, args, builds, tests):
-    thread = threading.Thread(target=testRunnerThread,
-                              args=(eventQueue, args, builds, tests),
-                              daemon=False)
-    thread.start()
-
-def testRunnerThread(eventQueue, args, builds, tests):
-    try:
-        for (build, test) in generateTestRuns(args, builds, tests):
-            results = runBenchmark(build, test, args)
-            eventQueue.put(TestResults(build, results))
-    except Exception as e:
-        print(f"Caught {e}")
-        sys.stdout.flush()
-        raise
-    finally:
-        eventQueue.put(None)  # Exit on exception.
-
-class TestResults:
-    def __init__(self, build, results):
-        self.build = build
-        self.results = results
-
-def startKeyboardInputThread(eventQueue, keyGetter):
-    thread = threading.Thread(target=keyboardInputThread,
-                              args=(eventQueue, keyGetter),
-                              daemon=True)
-    thread.start()
-
-def keyboardInputThread(eventQueue, keyGetter):
-    try:
-        while True:
-            key = keyGetter.get()
-            eventQueue.put(KeyPress(key))
-    except Exception as e:
-        print(f"Caught {e}")
-        sys.stdout.flush()
-        raise
-    finally:
-        eventQueue.put(None)  # Exit on exception.
-
-class KeyPress:
-    def __init__(self, key):
-        self.key = key
-
 def generateTestRuns(args, builds, tests):
     for i in range(args.iterations):
         for build in shuffled(builds):
@@ -309,6 +270,9 @@ def shuffled(list):
     result = list.copy()
     random.shuffle(result)
     return result
+
+# The benchmark subprocess currently running, so it can be stopped on quit.
+activeProc = None
 
 def runBenchmark(build, test, args):
     env = dict()
@@ -322,7 +286,6 @@ def runBenchmark(build, test, args):
         env['MOZ_REMOTE_ALLOW_SYSTEM_ACCESS'] = '1'
         cmd = ['./mach', 'raptor', '--browsertime'] + build.args + test.args
         dir = os.path.join(build.path, '..')  # todo: get top src dir from info
-        print(" ".join(cmd))
 
     profilePath = None
     if args.gc_profile:
@@ -357,7 +320,8 @@ def runBenchmark(build, test, args):
         if args.debug:
             print(f"Running {cmd}...")
 
-        proc = subprocess.Popen(cmd, env=env, cwd=dir, shell=False, text=True,
+        global activeProc
+        proc = activeProc = subprocess.Popen(cmd, env=env, cwd=dir, shell=False, text=True,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
         lines = []
@@ -385,10 +349,10 @@ def runBenchmark(build, test, args):
             proc.terminate()
             proc.wait()
         elif returncode != 0:
-            print(f"Error running benchmark {test.name} with shell {build.shell}:")
-            print(' '.join(cmd))
-            print(output)
-            raise Exception(f"Command exited with return code {proc.returncode}")
+            raise Exception(
+                f"Error running benchmark {test.name} with shell {build.shell}:\n"
+                f"{' '.join(cmd)}\n{output}\n"
+                f"Command exited with return code {returncode}")
 
     if args.gc_profile:
         assert profilePath
@@ -410,9 +374,7 @@ def runBenchmark(build, test, args):
         parsePerfOutput(results, stdout, stderr, args)
 
     if not results:
-        print("Failed to parse any result from output:")
-        print(output)
-        raise Exception("Failed to parse output")
+        raise Exception(f"Failed to parse any result from output:\n{output}")
 
     return results
 
@@ -506,10 +468,11 @@ def addResults(builds, results, build, newResults):
 def addResult(results, build, key, result):
     results[key][build].append(result)
 
-def displayResults(out, builds, results, args):
-    out.clear()
+def displayResults(builds, results, args):
+    lines = []
+    emit = lines.append
     if not args.csv:
-        printHeader(out, args)
+        printHeader(emit, args)
 
     if args.geomean:
         geomean = dict()
@@ -566,7 +529,7 @@ def displayResults(out, builds, results, args):
             continue
 
         if not args.csv and args.layout == 'expanded':
-            out.print(f"{keyName}:")
+            emit(f"{keyName}:")
 
         firstBuild = True
         for build in statsForBuild.keys():
@@ -583,19 +546,19 @@ def displayResults(out, builds, results, args):
                     text += "  " + formatSamples(low, high, stats)
 
             if args.csv:
-                out.print("%s, %s, %s" % (keyName, build.spec, text))
+                emit("%s, %s, %s" % (keyName, build.spec, text))
             elif args.layout == 'expanded':
-                out.print("  %20s  %s" % (build.spec[-20:], text))
+                emit("  %20s  %s" % (build.spec[-20:], text))
             else:
                 assert args.layout == 'compact'
                 name = keyName if firstBuild else ''
-                out.print("  %40s  %20s  %s" % (name[-40:], build.spec[-20:], text))
+                emit("  %40s  %20s  %s" % (name[-40:], build.spec[-20:], text))
 
             firstBuild = False
 
     if args.geomean and not args.csv:
-        out.print()
-        out.print("Geometric mean of means:")
+        emit()
+        emit("Geometric mean of means:")
         compareTo = None
         first = True
         for build in builds:
@@ -610,14 +573,16 @@ def displayResults(out, builds, results, args):
                     diff = (mean - compareTo) / compareTo
                     text += "                                     %4.1f%%" % (
                         diff * 100)
-                out.print("  %20s  %s" % (build.spec[-20:], text))
+                emit("  %20s  %s" % (build.spec[-20:], text))
 
-def printHeader(out, args):
+    return lines
+
+def printHeader(emit, args):
     header = statsHeader(args)
     if args.layout == 'compact':
         header = ("%-40s  " % "Result") + header
-    out.print(header)
-    out.print(len(header) * "=")
+    emit(header)
+    emit(len(header) * "=")
 
 def writeResultsToFile(builds, results, args):
     data = []

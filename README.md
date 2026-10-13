@@ -57,7 +57,7 @@ The columns have the following meaning:
 
 # Installation requirements
 
-  $ pip3 install ansi==0.3.6
+  $ pip3 install textual
   $ pip3 install scipy
 
 # Development
