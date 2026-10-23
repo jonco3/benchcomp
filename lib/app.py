@@ -5,6 +5,7 @@
 import threading
 
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.widgets import Footer, Header, Static
 
@@ -24,6 +25,7 @@ class BenchApp(App):
 
     BINDINGS = [
         ('q', 'quit', 'Quit'),
+        Binding('ctrl+c', 'quit', 'Quit', show=False),
         ('c', "press('c')", 'Next compare'),
         ('C', "press('C')", 'Prev compare'),
         ('s', "press('s')", 'Summary'),
