@@ -24,6 +24,7 @@ import android
 from build import Build
 from format import *
 from perf import *
+from resultkey import ResultKey
 from stats import *
 from test import *
 import gcprofile
@@ -382,7 +383,7 @@ def parseShellOutput(results, line, args):
     match = re.match(r'([\w\s-]+):\s+(\d+(:?\.\d+)?)', line)
     if match:
         key, value = match.group(1), match.group(2)
-        key = '!' + key  # These are displayed first.
+        key = ResultKey(key, primary=True)  # These are displayed first.
         value = float(value)
         if key not in results:
             results[key] = []
@@ -405,8 +406,7 @@ def parseBrowserOutput(results, line, args):
         raise
 
     for testData in subtests:
-        key = testData['name']
-        key = '!' + key  # These are displayed first.
+        key = ResultKey(testData['name'], primary=True)  # These are displayed first.
         values = list(map(float, testData['replicates']))
         if key not in results:
             results[key] = []
@@ -449,7 +449,7 @@ def addSysUsageResult(results, key, value):
         value = value / 1024
         key += " (KB)"
 
-    results[key] = value
+    results[ResultKey(key)] = value
 
 def addResults(builds, results, build, newResults):
     for key in newResults.keys():
@@ -479,13 +479,13 @@ def displayResults(builds, results, args):
         for build in builds:
             geomean[build] = (0, 0)
 
-    keys = results.keys()
+    keys = list(results.keys())
     if args.reverse_order:
-        keys = reversed(keys)
+        keys.reverse()
+    keys.sort(key=lambda key: not key.primary)  # Stable, so primary results come first.
 
     for key in keys:
-        isResultKey = key.startswith('!')
-        keyName = key[1:] if isResultKey else key
+        keyName = key.name
 
         statsForBuild = dict()
         compareTo = None
@@ -502,7 +502,7 @@ def displayResults(builds, results, args):
             stats = Stats(data)
             statsForBuild[build] = stats
 
-            if args.geomean and isResultKey and stats.mean != 0:
+            if args.geomean and key.primary and stats.mean != 0:
                 sumOfLogs, count = geomean[build]
                 geomean[build] = (sumOfLogs + math.log(stats.mean), count + 1)
 
@@ -597,9 +597,7 @@ def writeResultsToFile(builds, results, args):
         for key in results.keys():
             if build in results[key]:
                 stats = Stats(results[key][build])
-                if key.startswith('!'):
-                    key = key[1:]
-                buildData['results'][key] = stats.__dict__
+                buildData['results'][key.name] = stats.__dict__
 
         data.append(buildData)
 

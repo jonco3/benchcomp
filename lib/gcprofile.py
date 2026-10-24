@@ -6,6 +6,44 @@ import math
 import re
 import statistics
 
+from resultkey import ResultKey
+
+# Result keys.
+FIRST_MAJOR_GC = ResultKey('First major GC')
+HEAP_SIZE_KB_AT_FIRST_MAJOR_GC = ResultKey('Heap size / KB at first major GC')
+MAJOR_GC_COUNT = ResultKey('Major GC count')
+TOTAL_BUDGET_OVERRUN = ResultKey('Total budget overrun')
+MAX_GC_HEAP_SIZE_KB = ResultKey('Max GC heap size / KB')
+MEDIAN_GC_HEAP_SIZE_KB = ResultKey('Median GC heap size / KB')
+MAX_MALLOC_HEAP_SIZE_KB = ResultKey('Max malloc heap size / KB')
+MEDIAN_MALLOC_HEAP_SIZE_KB = ResultKey('Median malloc heap size / KB')
+MAX_NURSERY_SIZE_KB = ResultKey('Max nursery size / KB')
+MEDIAN_NURSERY_SIZE_KB = ResultKey('Median nursery size / KB')
+ALLOC_TRIGGER_SLICES = ResultKey('ALLOC_TRIGGER slices')
+TOO_MUCH_MALLOC_SLICES = ResultKey('TOO_MUCH_MALLOC slices')
+FULL_STORE_BUFFER_NURSERY_COLLECTIONS = ResultKey('Full store buffer nursery collections')
+MEAN_FULL_NURSERY_PROMOTION_RATE = ResultKey('Mean full nusery promotion rate')
+MAJOR_GC_CYCLE_COUNT = ResultKey('Major GC cycle count')
+MEAN_MAJOR_GC_CYCLE_DURATION = ResultKey('Mean major GC cycle duration')
+MAJOR_GC_SLICE_COUNT = ResultKey('Major GC slice count')
+MAJOR_GC_TIME = ResultKey('Major GC time')
+MEAN_MAJOR_GC_SLICE_TIME = ResultKey('Mean major GC slice time')
+MINOR_GC_COUNT = ResultKey('Minor GC count')
+MINOR_GC_TIME = ResultKey('Minor GC time')
+MEAN_MINOR_GC_TIME = ResultKey('Mean minor GC time')
+TOTAL_GC_TIME = ResultKey('Total GC time')
+PARALLEL_MARKING_DONATIONS_PER_COLLECTION = ResultKey('Parallel marking donations per collection')
+GEOMETRIC_MEAN_MARK_RATE = ResultKey('Geometric mean mark rate')
+MAX_BUFFER_HEAP_SIZE_KB = ResultKey('Max buffer heap size / KB')
+MEDIAN_BUFFER_HEAP_SIZE_KB = ResultKey('Median buffer heap size / KB')
+MEDIAN_BUFFER_HEAP_DENSITY_PERCENT = ResultKey('Median buffer heap density %')
+
+PHASE_FIELD_NAMES = ['bgwrk', 'waitBG', 'prep', 'mark', 'sweep', 'cmpct']
+TOTAL_MAJOR_GC_TIME_IN_PHASE = {
+    name: ResultKey('Total major GC time in phase ' + name)
+    for name in PHASE_FIELD_NAMES
+}
+
 # Detect whether we're currently running a raptor test, or between
 # tests.
 StartTestText = 'Testing url'
@@ -29,10 +67,6 @@ def summariseProfile(text, result, categories, filterMostActiveRuntime=True):
                      categories)
 
     summariseBufferAllocatorData(result, majorFields, majorData)
-
-    #if testCount != 0:
-    #    summariseAllDataByInTest(result, majorFields, majorData, minorFields,
-    #                             minorData, categories, True)
 
     if 'major' in categories:
         # Useful for scheduling changes only.
@@ -67,13 +101,13 @@ def findFirstMajorGC(result, majorFields, majorData):
         if float(line[totalField]) == 0 and line[statesField] == "0 -> 0":
             continue
 
-        result['First major GC'] = float(line[timestampField])
-        result['Heap size / KB at first major GC'] = int(line[sizeField])
+        result[FIRST_MAJOR_GC] = float(line[timestampField])
+        result[HEAP_SIZE_KB_AT_FIRST_MAJOR_GC] = int(line[sizeField])
         break
 
 def summarisePhaseTimes(result, majorFields, majorData):
     reasonField = majorFields.get('Reason')
-    fieldNames = ['bgwrk', 'waitBG', 'prep', 'mark', 'sweep', 'cmpct']
+    fieldNames = PHASE_FIELD_NAMES
     fields = [majorFields.get(name) for name in fieldNames]
     totals = [0 for name in fieldNames]
 
@@ -85,8 +119,7 @@ def summarisePhaseTimes(result, majorFields, majorData):
                 totals[i] += float(value)
 
     for i in range(len(fields)):
-        key = 'Total major GC time in phase ' + fieldNames[i]
-        result[key] = totals[i]
+        result[TOTAL_MAJOR_GC_TIME_IN_PHASE[fieldNames[i]]] = totals[i]
 
 def countMajorGCs(result, majorFields, majorData):
     statesField = majorFields.get('States')
@@ -98,7 +131,7 @@ def countMajorGCs(result, majorFields, majorData):
         if "0 ->" in line[statesField]:
             count += 1
 
-    result['Major GC count'] = count
+    result[MAJOR_GC_COUNT] = count
 
 def summariseIncrementalGCDuration(majorFields, majorData):
     statesField = majorFields.get('States')
@@ -261,64 +294,53 @@ def splitWithSpans(line, spans):
 
     return fields
 
-def summariseAllDataByInTest(result, majorFields, majorData, minorFields,
-                             minorData, categories, inTest):
-    majorData = filterByInTest(majorFields, majorData, inTest)
-    minorData = filterByInTest(minorFields, minorData, inTest)
-
-    suffix = ' in test' if inTest else ' outside test'
-
-    summariseAllData(result, majorFields, majorData, minorFields, minorData,
-                     categories, suffix)
-
 def summariseAllData(result,
                      majorFields,
                      majorData,
                      minorFields,
                      minorData,
-                     categories,
-                     keySuffix=''):
+                     categories):
     summariseMajorMinorData(result, majorFields, majorData, minorFields,
-                            minorData, categories, keySuffix)
+                            minorData, categories)
 
     if 'major' in categories:
-        result['Total budget overrun' + keySuffix] = \
+        result[TOTAL_BUDGET_OVERRUN] = \
         calculateBudgetOverrun(majorFields, majorData)
 
     if 'major' in categories and 'size' in categories:
-        result['Max GC heap size / KB' + keySuffix] = \
+        result[MAX_GC_HEAP_SIZE_KB] = \
             findMax(majorFields, majorData, 'SizeKB')
-        result['Median GC heap size / KB' + keySuffix] = \
+        result[MEDIAN_GC_HEAP_SIZE_KB] = \
             calcMedian(majorFields, majorData, 'SizeKB')
-        result['Max malloc heap size / KB' + keySuffix] = \
+        result[MAX_MALLOC_HEAP_SIZE_KB] = \
             findMax(majorFields, majorData, 'MllcKB')
-        result['Median malloc heap size / KB' + keySuffix] = \
+        result[MEDIAN_MALLOC_HEAP_SIZE_KB] = \
             calcMedian(majorFields, majorData, 'MllcKB')
 
     if 'minor' in categories and 'size' in categories:
-        result['Max nursery size / KB' + keySuffix] = \
+        result[MAX_NURSERY_SIZE_KB] = \
             findMax(minorFields, minorData, 'NewKB')
-        result['Median nursery size / KB' + keySuffix] = \
+        result[MEDIAN_NURSERY_SIZE_KB] = \
             calcMedian(minorFields, minorData, 'NewKB')
 
     if 'major' in categories and 'reason' in categories:
-        result['ALLOC_TRIGGER slices' + keySuffix] = \
+        result[ALLOC_TRIGGER_SLICES] = \
             len(filterByReason(majorFields, majorData, 'ALLOC_TRIGGER'))
-        result['TOO_MUCH_MALLOC slices' + keySuffix] = \
+        result[TOO_MUCH_MALLOC_SLICES] = \
             len(filterByReason(majorFields, majorData, 'TOO_MUCH_MALLOC'))
 
     if 'minor' in categories and 'reason' in categories:
-        result['Full store buffer nursery collections' + keySuffix] = \
+        result[FULL_STORE_BUFFER_NURSERY_COLLECTIONS] = \
             len(filterByFullStoreBufferReason(minorFields, minorData))
 
     if 'minor' in categories:
-        result['Mean full nusery promotion rate' + keySuffix] = \
+        result[MEAN_FULL_NURSERY_PROMOTION_RATE] = \
             meanPromotionRate(minorFields,
                               filterByReason(minorFields, minorData, 'OUT_OF_NURSERY'))
 
 
 def summariseMajorMinorData(result, majorFields, majorData, minorFields,
-                            minorData, categories, keySuffix):
+                            minorData, categories):
     majorCount, majorTime = summariseData(majorFields, majorData)
     minorCount, minorTime = summariseData(minorFields, minorData)
     minorTime /= 1000
@@ -328,23 +350,23 @@ def summariseMajorMinorData(result, majorFields, majorData, minorFields,
         incrementalCount, incrementalTime = \
             summariseIncrementalGCDuration(majorFields, majorData)
         if incrementalCount:
-            result['Major GC cycle count'] = incrementalCount
-            result['Mean major GC cycle duration'] = \
+            result[MAJOR_GC_CYCLE_COUNT] = incrementalCount
+            result[MEAN_MAJOR_GC_CYCLE_DURATION] = \
                 incrementalTime / incrementalCount
 
-        result['Major GC slice count' + keySuffix] = majorCount
-        result['Major GC time' + keySuffix] = majorTime
+        result[MAJOR_GC_SLICE_COUNT] = majorCount
+        result[MAJOR_GC_TIME] = majorTime
         if majorCount:
-            result['Mean major GC slice time'] = majorTime / majorCount
+            result[MEAN_MAJOR_GC_SLICE_TIME] = majorTime / majorCount
 
 
     if 'minor' in categories:
-        result['Minor GC count' + keySuffix] = minorCount
-        result['Minor GC time' + keySuffix] = minorTime
+        result[MINOR_GC_COUNT] = minorCount
+        result[MINOR_GC_TIME] = minorTime
         if minorCount:
-            result['Mean minor GC time'] = minorTime / minorCount
+            result[MEAN_MINOR_GC_TIME] = minorTime / minorCount
 
-    result['Total GC time' + keySuffix] = majorTime + minorTime
+    result[TOTAL_GC_TIME] = majorTime + minorTime
 
 def summariseData(fieldMap, data):
     reasonField = fieldMap['Reason']
@@ -401,9 +423,8 @@ def summariseParallelMarking(result, majorFields, majorData):
     if count == 0:
         return
 
-    result[
-        'Parallel marking donations per collection'] = donationsTotal / count
-    result['Geometric mean mark rate'] = math.exp(logMarkRateTotal / count)
+    result[PARALLEL_MARKING_DONATIONS_PER_COLLECTION] = donationsTotal / count
+    result[GEOMETRIC_MEAN_MARK_RATE] = math.exp(logMarkRateTotal / count)
 
 
 def summariseBufferAllocatorData(result, majorFields, majorData):
@@ -422,9 +443,9 @@ def summariseBufferAllocatorData(result, majorFields, majorData):
             densityValues.append(float(record[buffDnsField][:-1]))
 
     if sizeKBValues:
-        result['Max buffer heap size / KB'] = max(sizeKBValues)
-        result['Median buffer heap size / KB'] = statistics.median(sizeKBValues)
-        result['Median buffer heap density %'] = statistics.median(densityValues)
+        result[MAX_BUFFER_HEAP_SIZE_KB] = max(sizeKBValues)
+        result[MEDIAN_BUFFER_HEAP_SIZE_KB] = statistics.median(sizeKBValues)
+        result[MEDIAN_BUFFER_HEAP_DENSITY_PERCENT] = statistics.median(densityValues)
 
 # Work out which runtime we're interested in. This is a heuristic that
 # may not always work.

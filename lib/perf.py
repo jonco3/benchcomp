@@ -6,6 +6,8 @@
 
 import re
 
+from resultkey import ResultKey
+
 def updateCommandForPerf(args, cmd):
     perf = 'simpleperf' if args.android else 'perf'
     events = [
@@ -56,4 +58,4 @@ def parsePerfOutput(result, stdout, stderr, args):
 
         value, key = match.group(1), match.group(2).strip()
         value = float(value.replace(',', ''))
-        result[key] = value
+        result[ResultKey(key)] = value
