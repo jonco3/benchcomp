@@ -10,12 +10,14 @@ ColumnNames = ("Build", "Min", "Mean", "Median", "Max", "CofV", "Runs",
 
 def statsHeader(args):
     key = args.compare
-    columns = list(map(lambda name: (name + "*") if key == name.lower() else name,
-                       ColumnNames))
+    columns = list(
+        map(lambda name: (name + "*")
+            if key == name.lower() else name, ColumnNames))
 
     columns.append(args.summary.capitalize())
 
-    return "  %-20s  %-8s  %-8s  %-8s  %-8s  %-6s  %-6s  %-7s  %-7s  %-40s" % tuple(columns)
+    return "  %-20s  %-8s  %-8s  %-8s  %-8s  %-6s  %-6s  %-7s  %-7s  %-40s" % tuple(
+        columns)
 
 def formatFloat(width, x):
     # General purpose number format that fits the most significant

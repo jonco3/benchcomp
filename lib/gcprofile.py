@@ -21,7 +21,8 @@ MAX_NURSERY_SIZE_KB = ResultKey('Max nursery size / KB')
 MEDIAN_NURSERY_SIZE_KB = ResultKey('Median nursery size / KB')
 ALLOC_TRIGGER_SLICES = ResultKey('ALLOC_TRIGGER slices')
 TOO_MUCH_MALLOC_SLICES = ResultKey('TOO_MUCH_MALLOC slices')
-FULL_STORE_BUFFER_NURSERY_COLLECTIONS = ResultKey('Full store buffer nursery collections')
+FULL_STORE_BUFFER_NURSERY_COLLECTIONS = ResultKey(
+    'Full store buffer nursery collections')
 MEAN_FULL_NURSERY_PROMOTION_RATE = ResultKey('Mean full nusery promotion rate')
 MAJOR_GC_CYCLE_COUNT = ResultKey('Major GC cycle count')
 MEAN_MAJOR_GC_CYCLE_DURATION = ResultKey('Mean major GC cycle duration')
@@ -32,7 +33,8 @@ MINOR_GC_COUNT = ResultKey('Minor GC count')
 MINOR_GC_TIME = ResultKey('Minor GC time')
 MEAN_MINOR_GC_TIME = ResultKey('Mean minor GC time')
 TOTAL_GC_TIME = ResultKey('Total GC time')
-PARALLEL_MARKING_DONATIONS_PER_COLLECTION = ResultKey('Parallel marking donations per collection')
+PARALLEL_MARKING_DONATIONS_PER_COLLECTION = ResultKey(
+    'Parallel marking donations per collection')
 GEOMETRIC_MEAN_MARK_RATE = ResultKey('Geometric mean mark rate')
 MAX_BUFFER_HEAP_SIZE_KB = ResultKey('Max buffer heap size / KB')
 MEDIAN_BUFFER_HEAP_SIZE_KB = ResultKey('Median buffer heap size / KB')
@@ -294,11 +296,7 @@ def splitWithSpans(line, spans):
 
     return fields
 
-def summariseAllData(result,
-                     majorFields,
-                     majorData,
-                     minorFields,
-                     minorData,
+def summariseAllData(result, majorFields, majorData, minorFields, minorData,
                      categories):
     summariseMajorMinorData(result, majorFields, majorData, minorFields,
                             minorData, categories)
@@ -338,7 +336,6 @@ def summariseAllData(result,
             meanPromotionRate(minorFields,
                               filterByReason(minorFields, minorData, 'OUT_OF_NURSERY'))
 
-
 def summariseMajorMinorData(result, majorFields, majorData, minorFields,
                             minorData, categories):
     majorCount, majorTime = summariseData(majorFields, majorData)
@@ -358,7 +355,6 @@ def summariseMajorMinorData(result, majorFields, majorData, minorFields,
         result[MAJOR_GC_TIME] = majorTime
         if majorCount:
             result[MEAN_MAJOR_GC_SLICE_TIME] = majorTime / majorCount
-
 
     if 'minor' in categories:
         result[MINOR_GC_COUNT] = minorCount
@@ -426,7 +422,6 @@ def summariseParallelMarking(result, majorFields, majorData):
     result[PARALLEL_MARKING_DONATIONS_PER_COLLECTION] = donationsTotal / count
     result[GEOMETRIC_MEAN_MARK_RATE] = math.exp(logMarkRateTotal / count)
 
-
 def summariseBufferAllocatorData(result, majorFields, majorData):
     if 'BuffKB' not in majorFields or 'BuffDns' not in majorFields:
         return
@@ -445,7 +440,8 @@ def summariseBufferAllocatorData(result, majorFields, majorData):
     if sizeKBValues:
         result[MAX_BUFFER_HEAP_SIZE_KB] = max(sizeKBValues)
         result[MEDIAN_BUFFER_HEAP_SIZE_KB] = statistics.median(sizeKBValues)
-        result[MEDIAN_BUFFER_HEAP_DENSITY_PERCENT] = statistics.median(densityValues)
+        result[MEDIAN_BUFFER_HEAP_DENSITY_PERCENT] = statistics.median(
+            densityValues)
 
 # Work out which runtime we're interested in. This is a heuristic that
 # may not always work.

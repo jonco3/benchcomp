@@ -68,11 +68,12 @@ def pushBinary(build, binary, dstDir, skipIfMissing=False):
     if skipIfMissing and not os.path.isfile(src):
         return
     assert os.path.isfile(src)
-    srcSum = runOrExit(['sha1sum', src])[0].splitlines()[0].split()[0];
+    srcSum = runOrExit(['sha1sum', src])[0].splitlines()[0].split()[0]
     assert len(srcSum) == 40
 
     dst = f"{dstDir}/{binary}"
-    dstSum = remoteShell(['sha1sum', dst, '||', 'echo', 'missing'])[0].split()[0];
+    dstSum = remoteShell(['sha1sum', dst, '||', 'echo',
+                          'missing'])[0].split()[0]
     assert dstSum == 'missing' or len(dstSum) == 40
 
     if dstSum != srcSum:
@@ -86,7 +87,8 @@ def runRemote(build, dir, command, env):
     return remoteShell(command)
 
 def getMaxCpuFrequency():
-    out, _ = remoteShell(['cat', '/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq'])
+    out, _ = remoteShell(
+        ['cat', '/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq'])
     freqs = map(int, out.splitlines())
     return max(freqs)
 
