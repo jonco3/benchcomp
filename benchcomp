@@ -34,6 +34,10 @@ CompareKeys = ['min', 'mean', 'median', 'max', 'cofv']
 
 def main():
     args = parseArgs()
+    if args.list_tests:
+        for test in getKnownTests():
+            print(test.name)
+        return
     builds = buildsToTest(args)
     tests = testsToRun(args)
     checkBuildsAndTestsCompatible(builds, tests, args)
@@ -107,8 +111,13 @@ def parseArgs():
         '--debug',
         action='store_true',
         help='Print debugging information such as subprocess output')
-    parser.add_argument('builds', nargs="+")
+    parser.add_argument('--list-tests',
+                        action='store_true',
+                        help='Print the names of all known tests and exit')
+    parser.add_argument('builds', nargs="*")
     args = parser.parse_args()
+    if not args.list_tests and not args.builds:
+        parser.error('the following arguments are required: builds')
     if not args.summary:
         args.summary = 'histogram'
     return args
