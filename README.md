@@ -59,6 +59,7 @@ The columns have the following meaning:
 
   $ pip3 install textual
   $ pip3 install scipy
+  $ pip3 install psutil
 
 # Development
 

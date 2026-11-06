@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `benchcomp` is a Python 3 CLI that repeatedly runs a benchmark against multiple Mozilla SpiderMonkey builds (JS shell or browser via Raptor) and interactively displays statistical comparisons against the first build. See README.md for the output column meanings.
 
-There is no test suite or build step. Dependency: `pip3 install textual` (Android support also needs `adb` and `adbsync`; `--perf` needs `perf`/`simpleperf`).
+There is no test suite or build step. Dependencies: `pip3 install textual psutil` (Android support also needs `adb` and `adbsync`; `--perf` needs `perf`/`simpleperf`).
 
 - Run: `./benchcomp <build-dir> [<build-dir>...] -t <test>` (build args can be appended inside a quoted spec, e.g. `"build/ --foo"`)
 - Run a single benchmark once with the same options: `./benchrun <build> -t <test>`
