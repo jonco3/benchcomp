@@ -95,9 +95,41 @@ def getSpeedometer3Subtests():
         for line in f:
             # Suite names are the top-level 'name' properties in the Suites
             # array.
-            match = re.match(r'^    name: "([^"]+)",', line)
+            match = re.match(r'^\s+name:\s+"([^"]+)",', line)
             if match:
                 names.append(match.group(1))
+    return names
+
+def getJetStream3Subtests():
+    # Raptor clones JetStream into the mozbuild state directory the first time
+    # a jetstream3 test is run. If that hasn't happened yet there are no
+    # subtests to list.
+    state = os.environ.get('MOZBUILD_STATE_PATH',
+                           os.path.expanduser('~/.mozbuild'))
+    path = os.path.join(state, 'performance-tests/jetstream/JetStreamDriver.js')
+    if not os.path.isfile(path):
+        return []
+
+    names = []
+    inWtbTests = False
+    with open(path) as f:
+        for line in f:
+            # Benchmarks and groups are registered with a literal name.
+            match = re.match(r'^\s+name: "([^"]+)",', line)
+            if match:
+                names.append(match.group(1))
+                continue
+
+            # Web tooling benchmarks are generated from a table of names.
+            if line.startswith('const WTB_TESTS = {'):
+                inWtbTests = True
+            elif inWtbTests:
+                if line.startswith('}'):
+                    inWtbTests = False
+                    continue
+                match = re.match(r'^\s+"([^"]+)":', line)
+                if match:
+                    names.append(f"{match.group(1)}-wtb")
     return names
 
 def getKnownTests():
@@ -121,6 +153,10 @@ def getKnownTests():
         RaptorTest('ares6'),
         RaptorTest('jetstream2'),
         RaptorTest('jetstream3', 'jetstream3-desktop'),
+        *[
+            RaptorTest(f"jetstream3-{name}", 'jetstream3-desktop',
+                       f"test={name}") for name in getJetStream3Subtests()
+        ],
         RaptorTest('matrix-react-bench'),
         RaptorTest('speedometer', 'speedometer-desktop')
     ]
