@@ -2,6 +2,7 @@
 
 import os
 import os.path
+import re
 import sys
 import utils
 
@@ -67,8 +68,10 @@ class LocalTest(ShellTest):
         super().__init__(spec, dir, name, args)
 
 class RaptorTest(BrowserTest):
-    def __init__(self, name, testName=None):
+    def __init__(self, name, testName=None, urlParams=None):
         args = ['-t', testName if testName else name]
+        if urlParams:
+            args.extend(['--test-url-params', urlParams])
         args.extend(
             '--post-startup-delay 1000 --browser-cycles 1 --page-cycles 1'.
             split())
@@ -81,6 +84,20 @@ def getOctaneSubtests():
     for file in sorted(os.listdir(dir)):
         if file.startswith('run-') and file.endswith('.js'):
             names.append(file[len('run-'):-len('.js')])
+    return names
+
+def getSpeedometer3Subtests():
+    root = utils.path_to_source_root()
+    path = os.path.join(root, "third_party/webkit/PerformanceTests",
+                        "Speedometer3/resources/tests.mjs")
+    names = []
+    with open(path) as f:
+        for line in f:
+            # Suite names are the top-level 'name' properties in the Suites
+            # array.
+            match = re.match(r'^    name: "([^"]+)",', line)
+            if match:
+                names.append(match.group(1))
     return names
 
 def getKnownTests():
@@ -97,6 +114,10 @@ def getKnownTests():
 
         # Browser tests
         RaptorTest('speedometer3'),
+        *[
+            RaptorTest(f"speedometer3-{name}", 'speedometer3', f"suite={name}")
+            for name in getSpeedometer3Subtests()
+        ],
         RaptorTest('ares6'),
         RaptorTest('jetstream2'),
         RaptorTest('jetstream3', 'jetstream3-desktop'),
