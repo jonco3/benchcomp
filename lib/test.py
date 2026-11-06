@@ -74,27 +74,22 @@ class RaptorTest(BrowserTest):
             split())
         super().__init__(name, args)
 
+def getOctaneSubtests():
+    root = utils.path_to_source_root()
+    dir = os.path.join(root, "js/src/octane")
+    names = []
+    for file in sorted(os.listdir(dir)):
+        if file.startswith('run-') and file.endswith('.js'):
+            names.append(file[len('run-'):-len('.js')])
+    return names
+
 def getKnownTests():
     return [
         # Run all octane tests sequentially in a single runtime.
         OctaneTest(),
 
         # Run octane individual tests independently.
-        OctaneTest('richards'),
-        OctaneTest('deltablue'),
-        OctaneTest('crypto'),
-        OctaneTest('raytrace'),
-        OctaneTest('earley-boyer'),
-        OctaneTest('regexp'),
-        OctaneTest('splay'),
-        OctaneTest('navier-stokes'),
-        OctaneTest('pdfjs'),
-        OctaneTest('mandreel'),
-        OctaneTest('gbemu'),
-        OctaneTest('code-load'),
-        OctaneTest('box2d'),
-        OctaneTest('zlib'),
-        OctaneTest('typescript'),
+        *[OctaneTest(name) for name in getOctaneSubtests()],
 
         # Run all sunspider tests.
         SunspiderTest(),
