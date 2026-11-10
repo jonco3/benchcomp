@@ -30,30 +30,27 @@ class BrowserTest(Test):
         super().__init__(name, 'browser')
 
 class OctaneTest(ShellTest):
-    def __init__(self, name=None):
+    def __init__(self, root, name=None):
         if not name:
             name = 'octane'
             script = 'run.js'
         else:
             script = f"run-{name}.js"
-        root = utils.path_to_source_root()
         dir = os.path.normpath(os.path.join(root, "js/src/octane"))
         super().__init__(name, dir, script)
 
 class SunspiderTest(ShellTest):
-    def __init__(self):
+    def __init__(self, root):
         name = 'sunspider'
         script = 'sunspider-standalone-driver.js'
-        root = utils.path_to_source_root()
         dir = 'third_party/webkit/PerformanceTests/SunSpider/sunspider-0.9.1'
         dir = os.path.normpath(os.path.join(root, dir))
         super().__init__(name, dir, script)
 
 class SixSpeedTest(ShellTest):
-    def __init__(self):
+    def __init__(self, root):
         name = 'six-speed'
         script = 'test.js'
-        root = utils.path_to_source_root()
         dir = 'third_party/webkit/PerformanceTests/six-speed'
         dir = os.path.normpath(os.path.join(root, dir))
         super().__init__(name, dir, script)
@@ -77,8 +74,7 @@ class RaptorTest(BrowserTest):
             split())
         super().__init__(name, args)
 
-def getOctaneSubtests():
-    root = utils.path_to_source_root()
+def getOctaneSubtests(root):
     dir = os.path.join(root, "js/src/octane")
     names = []
     for file in sorted(os.listdir(dir)):
@@ -86,8 +82,7 @@ def getOctaneSubtests():
             names.append(file[len('run-'):-len('.js')])
     return names
 
-def getSpeedometer3Subtests():
-    root = utils.path_to_source_root()
+def getSpeedometer3Subtests(root):
     path = os.path.join(root, "third_party/webkit/PerformanceTests",
                         "Speedometer3/resources/tests.mjs")
     names = []
@@ -133,30 +128,35 @@ def getJetStream3Subtests():
     return names
 
 def getKnownTests():
-    return [
+    tests = []
+
+    # Finding some tests requires being in a Mozilla checkout.
+    root = utils.path_to_source_root()
+
+    if root:
         # Run all octane tests sequentially in a single runtime.
-        OctaneTest(),
+        tests.append(OctaneTest(root))
 
         # Run octane individual tests independently.
-        *[OctaneTest(name) for name in getOctaneSubtests()],
+        for name in getOctaneSubtests(root):
+            tests.append(OctaneTest(root, name))
 
-        # Run all sunspider tests.
-        SunspiderTest(),
-        SixSpeedTest(),
+        tests.append(SunspiderTest(root))
+        tests.append(SixSpeedTest(root))
 
-        # Browser tests
-        RaptorTest('speedometer3'),
-        *[
-            RaptorTest(f"speedometer3-{name}", 'speedometer3', f"suite={name}")
-            for name in getSpeedometer3Subtests()
-        ],
-        RaptorTest('ares6'),
-        RaptorTest('jetstream2'),
-        RaptorTest('jetstream3', 'jetstream3-desktop'),
-        *[
-            RaptorTest(f"jetstream3-{name}", 'jetstream3-desktop',
-                       f"test={name}") for name in getJetStream3Subtests()
-        ],
-        RaptorTest('matrix-react-bench'),
-        RaptorTest('speedometer', 'speedometer-desktop')
-    ]
+    tests.append(RaptorTest('speedometer3'))
+    if root:
+        for name in getSpeedometer3Subtests(root):
+            tests.append(RaptorTest(f"speedometer3-{name}", 'speedometer3', f"suite={name}"))
+
+    tests.append(RaptorTest('ares6'))
+    tests.append(RaptorTest('jetstream2'))
+
+    tests.append(RaptorTest('jetstream3', 'jetstream3-desktop'))
+    for name in getJetStream3Subtests():
+        tests.append(RaptorTest(f"jetstream3-{name}", 'jetstream3-desktop', f"test={name}"))
+
+    tests.append(RaptorTest('matrix-react-bench'))
+    tests.append(RaptorTest('speedometer', 'speedometer-desktop'))
+
+    return tests

@@ -11,5 +11,5 @@ def path_to_source_root():
         path = os.path.join(path, '..')
         depth += 1
         if not os.path.isdir(path) or depth > 10:
-            sys.exit('Please run from within the mozilla source tree')
+            return None
     return os.path.normpath(path)
