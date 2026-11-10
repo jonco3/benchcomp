@@ -51,6 +51,8 @@ def parseArgs():
     parser = argparse.ArgumentParser(
         description='Run benchmarks and compare the results interactively')
     parser.add_argument('-t', '--test', help='Test suite to run')
+    parser.add_argument('-p', '--permissive', action='store_true',
+                        help='Be more permissive when parsing test output')
     parser.add_argument('-i',
                         '--iterations',
                         type=int,
@@ -440,9 +442,12 @@ def runBenchmark(build, test, args):
     return results
 
 def parseShellOutput(results, line, args):
-    match = re.match(r'([\w\s-]+):\s+(\d+(:?\.\d+)?)', line)
+    if args.permissive:
+        match = re.match(r'([\w\s-]+)\s+(\d+(:?\.\d+)?)', line)
+    else:
+        match = re.match(r'([\w\s-]+):\s+(\d+(:?\.\d+)?)', line)
     if match:
-        key, value = match.group(1), match.group(2)
+        key, value = match.group(1).strip(), match.group(2)
         key = ResultKey(key, primary=True)  # These are displayed first.
         value = float(value)
         if key not in results:
